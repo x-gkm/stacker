@@ -49,8 +49,12 @@ async fn main() {
             gravity_time += 1;
             if gravity_time >= ENGINE_FPS {
                 gravity_time -= ENGINE_FPS;
-                active_piece.y -= 1;
-                active_piece.update_blocks();
+                let mut branched_piece = active_piece.clone();
+                branched_piece.y -= 1;
+                branched_piece.update_blocks();
+                if !check_collision(&pile, &branched_piece.blocks) {
+                    active_piece = branched_piece;
+                }
             }
         }
 
@@ -171,4 +175,18 @@ impl ActivePiece {
             .blocks(self.orientation)
             .map(|(bx, by)| (self.x + bx, self.y + by));
     }
+}
+
+fn check_collision(pile: &[[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT], blocks: &[(i32, i32)]) -> bool {
+    for &(x, y) in blocks {
+        if x < 0 || x >= PILE_WIDTH as i32 || y < 0 || y >= PILE_HEIGHT as i32 {
+            return true;
+        }
+
+        if let Some(_) = pile[y as usize][x as usize] {
+            return true;
+        }
+    }
+
+    false
 }
