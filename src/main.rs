@@ -44,13 +44,7 @@ struct PlayerActions {
 }
 
 impl PlayerActions {
-    fn clear(&mut self) {
-        *self = Default::default();
-    }
-
     fn take_input(&mut self) {
-        self.clear();
-
         if is_key_pressed(KeyCode::A) {
             self.hold = true;
         }
@@ -126,6 +120,28 @@ impl Engine {
     }
 
     fn frame(&mut self) {
+        let fa = &mut self.frame_actions;
+
+        if fa.begin_move_left {
+            fa.begin_move_left = false;
+            let mut branched_piece = self.active_piece.clone();
+            branched_piece.x -= 1;
+            branched_piece.update_blocks();
+            if !check_collision(&self.pile, &branched_piece.blocks) {
+                self.active_piece = branched_piece;
+            }
+        }
+
+        if fa.begin_move_right {
+            fa.begin_move_right = false;
+            let mut branched_piece = self.active_piece.clone();
+            branched_piece.x += 1;
+            branched_piece.update_blocks();
+            if !check_collision(&self.pile, &branched_piece.blocks) {
+                self.active_piece = branched_piece;
+            }
+        }
+
         self.gravity_time += 1;
         if self.gravity_time >= ENGINE_FPS {
             self.gravity_time -= ENGINE_FPS;
