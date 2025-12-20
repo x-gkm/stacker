@@ -8,6 +8,8 @@ const GRID_HEIGHT: i32 = 20;
 const BLOCK_SIZE: f32 = 25.;
 const ENGINE_FPS: i32 = 60;
 const FRAME_TIME: u128 = 1_000_000_000 / ENGINE_FPS as u128;
+const ENGINE_DAS: i32 = 6;
+const ENGINE_ARR: i32 = 1;
 
 #[derive(Debug, Copy, Clone)]
 enum Piece {
@@ -105,12 +107,19 @@ impl PlayerActions {
     }
 }
 
+enum DasDirection {
+    Left,
+    Right,
+}
+
 struct Engine {
     pile: [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT],
     active_piece: ActivePiece,
     residue_time: u128,
     frame_actions: PlayerActions,
     gravity_time: i32,
+    das: Option<DasDirection>,
+    das_time: i32,
 }
 
 impl Engine {
@@ -121,6 +130,8 @@ impl Engine {
             residue_time: 0,
             gravity_time: 0,
             frame_actions: Default::default(),
+            das: None,
+            das_time: 0,
         }
     }
 
@@ -134,7 +145,48 @@ impl Engine {
     }
 
     fn frame(&mut self) {
+        if self.das.is_some() {
+            self.das_time += 1;
+        }
+
+        if self.das_time >= ENGINE_DAS {
+            self.das_time -= ENGINE_ARR;
+
+            let mut branched_piece = self.active_piece.clone();
+            branched_piece.x += match self.das {
+                Some(DasDirection::Left) => -1,
+                Some(DasDirection::Right) => 1,
+                None => unreachable!(),
+            };
+            branched_piece.update_blocks();
+            if !check_collision(&self.pile, &branched_piece.blocks) {
+                self.active_piece = branched_piece;
+            }
+        }
+
         let fa = &mut self.frame_actions;
+
+        if fa.end_move_left {
+            fa.end_move_left = false;
+            // FIXME(gkm): This should be coming from somewhere else.
+            if is_key_down(KeyCode::L) {
+                self.das = Some(DasDirection::Right);
+            } else {
+                self.das = None;
+            }
+            self.das_time = 0;
+        }
+
+        if fa.end_move_right {
+            fa.end_move_right = false;
+            // FIXME(gkm): This should be coming from somewhere else.
+            if is_key_down(KeyCode::J) {
+                self.das = Some(DasDirection::Left);
+            } else {
+                self.das = None;
+            }
+            self.das_time = 0;
+        }
 
         if fa.flip {
             fa.flip = false;
@@ -174,6 +226,8 @@ impl Engine {
             if !check_collision(&self.pile, &branched_piece.blocks) {
                 self.active_piece = branched_piece;
             }
+            self.das = Some(DasDirection::Left);
+            self.das_time = 0;
         }
 
         if fa.begin_move_right {
@@ -184,6 +238,8 @@ impl Engine {
             if !check_collision(&self.pile, &branched_piece.blocks) {
                 self.active_piece = branched_piece;
             }
+            self.das = Some(DasDirection::Right);
+            self.das_time = 0;
         }
 
         if fa.harddrop {
