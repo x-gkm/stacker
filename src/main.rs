@@ -186,6 +186,24 @@ impl Engine {
             }
         }
 
+        if fa.harddrop {
+            fa.harddrop = false;
+            loop {
+                let mut branched_piece = self.active_piece.clone();
+                branched_piece.y -= 1;
+                branched_piece.update_blocks();
+                if !check_collision(&self.pile, &branched_piece.blocks) {
+                    self.active_piece = branched_piece;
+                } else {
+                    break;
+                }
+            }
+            for (x, y) in self.active_piece.blocks {
+                self.pile[y as usize][x as usize] = Some(self.active_piece.kind)
+            }
+            self.active_piece = ActivePiece::spawn(Piece::T);
+        }
+
         self.gravity_time += 1;
         if self.gravity_time >= ENGINE_FPS {
             self.gravity_time -= ENGINE_FPS;

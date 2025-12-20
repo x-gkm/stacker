@@ -1,7 +1,7 @@
 # stacker
 
 Things left to implement:
-- [ ] Harddrop
+- [x] Harddrop
 - [ ] Line clears
 - [ ] Piece generation
 - [ ] Top out
