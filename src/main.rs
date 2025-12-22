@@ -113,32 +113,40 @@ enum DasDirection {
     Right,
 }
 
+#[derive(PartialEq)]
+enum GameEvent {
+    Gravity,
+    Softdrop,
+}
+
 struct Engine {
     pile: [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT],
     active_piece: ActivePiece,
     residue_time: u128,
     frame_actions: PlayerActions,
-    gravity_time: i32,
     das: Option<DasDirection>,
     move_left: bool,
     move_right: bool,
-    softdrop: bool,
     das_time: i32,
+    timer: Timer<GameEvent>,
 }
 
 impl Engine {
     fn new() -> Engine {
+        let mut timer = Timer::new();
+
+        timer.add(ENGINE_FPS as u32, GameEvent::Gravity);
+
         Engine {
             pile: [[None; PILE_WIDTH]; PILE_HEIGHT],
             active_piece: ActivePiece::spawn(Piece::T),
             residue_time: 0,
-            gravity_time: 0,
             frame_actions: Default::default(),
             das: None,
             move_left: false,
             move_right: false,
-            softdrop: false,
             das_time: 0,
+            timer,
         }
     }
 
@@ -152,6 +160,47 @@ impl Engine {
     }
 
     fn frame(&mut self) {
+        let fa = &mut self.frame_actions;
+
+        self.timer.update(1);
+
+        if fa.begin_softdrop {
+            fa.begin_softdrop = false;
+            self.timer.remove(GameEvent::Gravity);
+            self.timer.add(0, GameEvent::Softdrop);
+        }
+
+        if fa.end_softdrop {
+            self.timer.remove(GameEvent::Softdrop);
+            self.timer.add(ENGINE_FPS as u32, GameEvent::Gravity);
+            fa.end_softdrop = false;
+        }
+
+        while let Some(event) = self.timer.poll() {
+            match event {
+                GameEvent::Gravity => {
+                    let mut branched_piece = self.active_piece.clone();
+                    branched_piece.y -= 1;
+                    branched_piece.update_blocks();
+                    if !check_collision(&self.pile, &branched_piece.blocks) {
+                        self.active_piece = branched_piece;
+                    }
+
+                    self.timer.add(ENGINE_FPS as u32, GameEvent::Gravity);
+                }
+                GameEvent::Softdrop => {
+                    let mut branched_piece = self.active_piece.clone();
+                    branched_piece.y -= 1;
+                    branched_piece.update_blocks();
+                    if !check_collision(&self.pile, &branched_piece.blocks) {
+                        self.active_piece = branched_piece;
+                    }
+
+                    self.timer.add(5, GameEvent::Softdrop);
+                }
+            }
+        }
+
         if self.das.is_some() {
             self.das_time += 1;
         }
@@ -170,8 +219,6 @@ impl Engine {
                 self.active_piece = branched_piece;
             }
         }
-
-        let fa = &mut self.frame_actions;
 
         if fa.end_move_left {
             fa.end_move_left = false;
@@ -267,34 +314,6 @@ impl Engine {
                 self.pile[y as usize][x as usize] = Some(self.active_piece.kind)
             }
             self.active_piece = ActivePiece::spawn(Piece::T);
-        }
-
-        if fa.begin_softdrop {
-            fa.begin_softdrop = false;
-            self.softdrop = true;
-            self.gravity_time = 0;
-            let mut branched_piece = self.active_piece.clone();
-            branched_piece.y -= 1;
-            branched_piece.update_blocks();
-            if !check_collision(&self.pile, &branched_piece.blocks) {
-                self.active_piece = branched_piece;
-            }
-        }
-
-        if fa.end_softdrop {
-            fa.end_softdrop = false;
-            self.softdrop = false;
-        }
-
-        self.gravity_time += 1;
-        if self.gravity_time >= if self.softdrop { 5 } else { ENGINE_FPS } {
-            self.gravity_time = 0;
-            let mut branched_piece = self.active_piece.clone();
-            branched_piece.y -= 1;
-            branched_piece.update_blocks();
-            if !check_collision(&self.pile, &branched_piece.blocks) {
-                self.active_piece = branched_piece;
-            }
         }
     }
 }
