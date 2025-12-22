@@ -117,6 +117,7 @@ enum DasDirection {
 enum GameEvent {
     Gravity,
     Softdrop,
+    Das,
 }
 
 struct Engine {
@@ -127,7 +128,6 @@ struct Engine {
     das: Option<DasDirection>,
     move_left: bool,
     move_right: bool,
-    das_time: i32,
     timer: Timer<GameEvent>,
 }
 
@@ -145,7 +145,6 @@ impl Engine {
             das: None,
             move_left: false,
             move_right: false,
-            das_time: 0,
             timer,
         }
     }
@@ -176,6 +175,58 @@ impl Engine {
             fa.end_softdrop = false;
         }
 
+        if fa.begin_move_left {
+            fa.begin_move_left = false;
+            self.move_left = true;
+            let mut branched_piece = self.active_piece.clone();
+            branched_piece.x -= 1;
+            branched_piece.update_blocks();
+            if !check_collision(&self.pile, &branched_piece.blocks) {
+                self.active_piece = branched_piece;
+            }
+            self.timer.remove(GameEvent::Das);
+            self.timer.add(ENGINE_DAS as u32, GameEvent::Das);
+            self.das = Some(DasDirection::Left);
+        }
+
+        if fa.begin_move_right {
+            fa.begin_move_right = false;
+            self.move_right = true;
+            let mut branched_piece = self.active_piece.clone();
+            branched_piece.x += 1;
+            branched_piece.update_blocks();
+            if !check_collision(&self.pile, &branched_piece.blocks) {
+                self.active_piece = branched_piece;
+            }
+            self.timer.remove(GameEvent::Das);
+            self.timer.add(ENGINE_DAS as u32, GameEvent::Das);
+            self.das = Some(DasDirection::Right);
+        }
+
+        if fa.end_move_left {
+            fa.end_move_left = false;
+            self.move_left = false;
+            self.timer.remove(GameEvent::Das);
+            if self.move_right {
+                self.das = Some(DasDirection::Right);
+                self.timer.add(ENGINE_DAS as u32, GameEvent::Das);
+            } else {
+                self.das = None;
+            }
+        }
+
+        if fa.end_move_right {
+            fa.end_move_right = false;
+            self.move_right = false;
+            self.timer.remove(GameEvent::Das);
+            if self.move_left {
+                self.das = Some(DasDirection::Left);
+                self.timer.add(ENGINE_DAS as u32, GameEvent::Das);
+            } else {
+                self.das = None;
+            }
+        }
+
         while let Some(event) = self.timer.poll() {
             match event {
                 GameEvent::Gravity => {
@@ -198,48 +249,21 @@ impl Engine {
 
                     self.timer.add(5, GameEvent::Softdrop);
                 }
+                GameEvent::Das => {
+                    let mut branched_piece = self.active_piece.clone();
+                    branched_piece.x += match self.das {
+                        Some(DasDirection::Left) => -1,
+                        Some(DasDirection::Right) => 1,
+                        None => unreachable!(),
+                    };
+                    branched_piece.update_blocks();
+                    if !check_collision(&self.pile, &branched_piece.blocks) {
+                        self.active_piece = branched_piece;
+                    }
+
+                    self.timer.add(ENGINE_ARR as u32, GameEvent::Das);
+                }
             }
-        }
-
-        if self.das.is_some() {
-            self.das_time += 1;
-        }
-
-        if self.das_time >= ENGINE_DAS {
-            self.das_time -= ENGINE_ARR;
-
-            let mut branched_piece = self.active_piece.clone();
-            branched_piece.x += match self.das {
-                Some(DasDirection::Left) => -1,
-                Some(DasDirection::Right) => 1,
-                None => unreachable!(),
-            };
-            branched_piece.update_blocks();
-            if !check_collision(&self.pile, &branched_piece.blocks) {
-                self.active_piece = branched_piece;
-            }
-        }
-
-        if fa.end_move_left {
-            fa.end_move_left = false;
-            self.move_left = false;
-            if self.move_right {
-                self.das = Some(DasDirection::Right);
-            } else {
-                self.das = None;
-            }
-            self.das_time = 0;
-        }
-
-        if fa.end_move_right {
-            fa.end_move_right = false;
-            self.move_right = false;
-            if self.move_left {
-                self.das = Some(DasDirection::Left);
-            } else {
-                self.das = None;
-            }
-            self.das_time = 0;
         }
 
         if fa.flip {
@@ -270,32 +294,6 @@ impl Engine {
             if !check_collision(&self.pile, &branched_piece.blocks) {
                 self.active_piece = branched_piece;
             }
-        }
-
-        if fa.begin_move_left {
-            fa.begin_move_left = false;
-            self.move_left = true;
-            let mut branched_piece = self.active_piece.clone();
-            branched_piece.x -= 1;
-            branched_piece.update_blocks();
-            if !check_collision(&self.pile, &branched_piece.blocks) {
-                self.active_piece = branched_piece;
-            }
-            self.das = Some(DasDirection::Left);
-            self.das_time = 0;
-        }
-
-        if fa.begin_move_right {
-            fa.begin_move_right = false;
-            self.move_right = true;
-            let mut branched_piece = self.active_piece.clone();
-            branched_piece.x += 1;
-            branched_piece.update_blocks();
-            if !check_collision(&self.pile, &branched_piece.blocks) {
-                self.active_piece = branched_piece;
-            }
-            self.das = Some(DasDirection::Right);
-            self.das_time = 0;
         }
 
         if fa.harddrop {
