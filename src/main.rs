@@ -140,9 +140,13 @@ impl Engine {
 
         timer.add(1000, GameEvent::Gravity);
 
+        let pile = [[None; PILE_WIDTH]; PILE_HEIGHT];
+        let mut active_piece = ActivePiece::spawn(Piece::T);
+        active_piece.update_ghost(&pile);
+
         Engine {
-            pile: [[None; PILE_WIDTH]; PILE_HEIGHT],
-            active_piece: ActivePiece::spawn(Piece::T),
+            pile,
+            active_piece,
             das: DasState {
                 direction: None,
                 move_left: false,
@@ -250,6 +254,7 @@ impl Engine {
                     if !check_collision(&self.pile, &branched_piece.blocks) {
                         self.active_piece = branched_piece;
                     }
+                    self.active_piece.update_ghost(&self.pile);
                 }
                 GameEvent::Harddrop => {
                     loop {
@@ -266,6 +271,7 @@ impl Engine {
                         self.pile[y as usize][x as usize] = Some(self.active_piece.kind)
                     }
                     self.active_piece = ActivePiece::spawn(Piece::T);
+                    self.active_piece.update_ghost(&self.pile);
                 }
                 GameEvent::Move(direction) => {
                     let mut branched_piece = self.active_piece.clone();
@@ -277,6 +283,7 @@ impl Engine {
                     if !check_collision(&self.pile, &branched_piece.blocks) {
                         self.active_piece = branched_piece;
                     }
+                    self.active_piece.update_ghost(&self.pile);
                 }
             }
         }
@@ -316,6 +323,19 @@ async fn main() {
             }
         }
 
+        for (x, y) in engine.active_piece.ghost_blocks {
+            let x = offset_x + x as f32 * BLOCK_SIZE;
+            let y = offset_y + (GRID_HEIGHT - y - 1) as f32 * BLOCK_SIZE;
+
+            draw_rectangle(
+                x,
+                y,
+                BLOCK_SIZE,
+                BLOCK_SIZE,
+                Color { r: 0., g: 0., b: 0., a: 0.2 },
+            );
+        }
+
         for (x, y) in engine.active_piece.blocks {
             let x = offset_x + x as f32 * BLOCK_SIZE;
             let y = offset_y + (GRID_HEIGHT - y - 1) as f32 * BLOCK_SIZE;
@@ -341,6 +361,8 @@ struct ActivePiece {
     x: i32,
     y: i32,
     blocks: [(i32, i32); 4],
+    ghost_y: i32,
+    ghost_blocks: [(i32, i32); 4],
 }
 
 impl Piece {
@@ -408,6 +430,8 @@ impl ActivePiece {
             x,
             y,
             blocks: [(0, 0); 4],
+            ghost_y: 0,
+            ghost_blocks: [(0, 0); 4],
         };
 
         result.update_blocks();
@@ -420,6 +444,22 @@ impl ActivePiece {
             .kind
             .blocks(self.orientation)
             .map(|(bx, by)| (self.x + bx, self.y + by));
+    }
+
+    fn update_ghost(&mut self, pile: &[[Option<Piece>; 10]; 40]) {
+        let mut ghost_piece = self.clone();
+        loop {
+            let mut branched_piece = ghost_piece.clone();
+            branched_piece.y -= 1;
+            branched_piece.update_blocks();
+            if !check_collision(pile, &branched_piece.blocks) {
+                ghost_piece = branched_piece;
+            } else {
+                break;
+            }
+        }
+        self.ghost_y = ghost_piece.y;
+        self.ghost_blocks = ghost_piece.blocks;
     }
 }
 
