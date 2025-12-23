@@ -5,7 +5,7 @@ Things left to implement:
 - [x] Softdrop
 - [x] Ghost piece
 - [x] Spawn delay
-- [ ] Line clears
+- [x] Line clears
 - [ ] Line clear delay
 - [ ] Piece generation
 - [ ] Top out

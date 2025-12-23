@@ -275,12 +275,12 @@ impl Engine {
                     };
 
                     for (x, y) in active_piece.ghost_blocks {
-                        self.pile[y as usize][x as usize] =
-                            Some(active_piece.kind)
+                        self.pile[y as usize][x as usize] = Some(active_piece.kind)
                     }
                     self.timer.remove(GameEvent::Gravity);
                     self.timer.add(10, GameEvent::Spawn);
                     self.active_piece = None;
+                    line_clear(&mut self.pile);
                 }
                 GameEvent::Move(direction) => {
                     let Some(ref mut active_piece) = self.active_piece else {
@@ -299,6 +299,32 @@ impl Engine {
                     active_piece.update_ghost(&self.pile);
                 }
             }
+        }
+    }
+}
+
+fn line_clear(pile: &mut [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT]) {
+    for row in (0..PILE_HEIGHT).rev() {
+        let mut full = true;
+        for cell in &pile[row] {
+            if cell.is_none() {
+                full = false;
+                break;
+            }
+        }
+
+        if !full {
+            continue;
+        }
+
+        for ripple in row..PILE_HEIGHT - 1 {
+            for cell in 0..PILE_WIDTH {
+                pile[ripple][cell] = pile[ripple + 1][cell];
+            }
+        }
+
+        for cell in 0..PILE_WIDTH {
+            pile[PILE_HEIGHT - 1][cell] = None;
         }
     }
 }
