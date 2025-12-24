@@ -8,9 +8,9 @@ Things left to implement:
 - [x] Line clears
 - [x] Line clear delay
 - [x] Piece generation
-- [ ] Top out
-- [ ] Block out
+- [x] Das
+- [x] Kicks
 - [ ] Hold
 - [ ] Next queue
-- [ ] Das
-- [ ] Kicks
+- [ ] Block out
+- [ ] Top out

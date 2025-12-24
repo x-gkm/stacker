@@ -298,10 +298,18 @@ impl Engine {
 
                     let mut branched_piece = active_piece.clone();
                     branched_piece.orientation.rotate_cw(n);
-                    branched_piece.update_blocks();
-                    if !check_collision(&self.pile, &branched_piece.blocks) {
-                        *active_piece = branched_piece;
+
+                    for n in 0..5 {
+                        let (kick_x, kick_y) = kick_offset(active_piece.kind, active_piece.orientation, branched_piece.orientation, n);
+                        branched_piece.x = active_piece.x + kick_x;
+                        branched_piece.y = active_piece.y + kick_y;
+                        branched_piece.update_blocks();
+                        if !check_collision(&self.pile, &branched_piece.blocks) {
+                            *active_piece = branched_piece;
+                            break;
+                        }
                     }
+
                     active_piece.update_ghost(&self.pile);
                 }
                 GameEvent::Harddrop => {
@@ -471,6 +479,37 @@ struct ActivePiece {
     blocks: [(i32, i32); 4],
     ghost_y: i32,
     ghost_blocks: [(i32, i32); 4],
+}
+
+fn kick_offset(piece: Piece, from: Orientation, to: Orientation, n: i32) -> (i32, i32) {
+    let (x1, y1) = kick_offset_part(piece, from, n);
+    let (x2, y2) = kick_offset_part(piece, to, n);
+
+    (x1 - x2, y1 - y2)
+}
+
+fn kick_offset_part(piece: Piece, orientation: Orientation, n: i32) -> (i32, i32) {
+    if let Piece::O = piece {
+        return match orientation {
+            Orientation::N => (0, 0),
+            Orientation::E => (0, -1),
+            Orientation::S => (-1, -1),
+            Orientation::W => (-1, 0),
+        }
+    }
+
+    let offsets = match (piece, orientation) {
+        (Piece::I, Orientation::N) => [(0, 0), (-1, 0), (2, 0), (-1, 0), (2, 0)],
+        (Piece::I, Orientation::E) => [(-1, 0), (0, 0), (0, 0), (0, 1), (0, -2)],
+        (Piece::I, Orientation::S) => [(-1, 1), (1, 1), (-2, 1), (1, 0), (-2, 0)],
+        (Piece::I, Orientation::W) => [(0, 1), (0, 1), (0, 1), (0, -1), (0, 2)],
+        (_, Orientation::N) => [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
+        (_, Orientation::E) => [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
+        (_, Orientation::S) => [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
+        (_, Orientation::W) => [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
+    };
+
+    offsets[n as usize]
 }
 
 impl Piece {
