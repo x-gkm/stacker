@@ -5,56 +5,6 @@ use stacker::{Direction, Engine, GRID_HEIGHT, Input, Orientation, PILE_WIDTH, Pi
 
 const BLOCK_SIZE: f32 = 25.;
 
-fn take_input() -> Vec<Input> {
-    let mut result = vec![];
-
-    if is_key_pressed(KeyCode::A) {
-        result.push(Input::Hold);
-    }
-
-    if is_key_pressed(KeyCode::S) {
-        result.push(Input::Flip);
-    }
-
-    if is_key_pressed(KeyCode::D) {
-        result.push(Input::Rotate(Direction::Left));
-    }
-
-    if is_key_pressed(KeyCode::F) {
-        result.push(Input::Rotate(Direction::Right));
-    }
-
-    if is_key_pressed(KeyCode::Space) {
-        result.push(Input::Harddrop);
-    }
-
-    if is_key_pressed(KeyCode::J) {
-        result.push(Input::BeginMove(Direction::Left));
-    }
-
-    if is_key_released(KeyCode::J) {
-        result.push(Input::EndMove(Direction::Left));
-    }
-
-    if is_key_pressed(KeyCode::K) {
-        result.push(Input::BeginSoftdrop);
-    }
-
-    if is_key_released(KeyCode::K) {
-        result.push(Input::EndSoftdrop);
-    }
-
-    if is_key_pressed(KeyCode::L) {
-        result.push(Input::BeginMove(Direction::Right));
-    }
-
-    if is_key_released(KeyCode::L) {
-        result.push(Input::EndMove(Direction::Right));
-    }
-
-    result
-}
-
 #[macroquad::main("stacker")]
 async fn main() {
     let mut engine = Engine::new();
@@ -64,8 +14,48 @@ async fn main() {
         let time = Instant::now();
         let delta = time - prev_time;
 
-        for input in take_input() {
-            engine.process_input(input);
+        if is_key_pressed(KeyCode::A) {
+            engine.process_input(Input::Hold);
+        }
+
+        if is_key_pressed(KeyCode::S) {
+            engine.process_input(Input::Flip);
+        }
+
+        if is_key_pressed(KeyCode::D) {
+            engine.process_input(Input::Rotate(Direction::Left));
+        }
+
+        if is_key_pressed(KeyCode::F) {
+            engine.process_input(Input::Rotate(Direction::Right));
+        }
+
+        if is_key_pressed(KeyCode::Space) {
+            engine.process_input(Input::Harddrop);
+        }
+
+        if is_key_pressed(KeyCode::J) {
+            engine.process_input(Input::BeginMove(Direction::Left));
+        }
+
+        if is_key_released(KeyCode::J) {
+            engine.process_input(Input::EndMove(Direction::Left));
+        }
+
+        if is_key_pressed(KeyCode::K) {
+            engine.process_input(Input::BeginSoftdrop);
+        }
+
+        if is_key_released(KeyCode::K) {
+            engine.process_input(Input::EndSoftdrop);
+        }
+
+        if is_key_pressed(KeyCode::L) {
+            engine.process_input(Input::BeginMove(Direction::Right));
+        }
+
+        if is_key_released(KeyCode::L) {
+            engine.process_input(Input::EndMove(Direction::Right));
         }
 
         engine.update(delta);
