@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, time::Duration};
 
-use macroquad::rand::ChooseRandom;
+use rand::{SeedableRng, seq::SliceRandom};
+use rand_chacha::ChaChaRng;
 
 const PILE_HEIGHT: usize = 40;
 pub const PILE_WIDTH: usize = 10;
@@ -85,12 +86,14 @@ struct DasState {
 
 pub struct NextQueue {
     pieces: VecDeque<Piece>,
+    rng: ChaChaRng,
 }
 
 impl NextQueue {
     fn new() -> NextQueue {
         let mut result = NextQueue {
             pieces: VecDeque::new(),
+            rng: ChaChaRng::from_os_rng(),
         };
 
         result.add_bag();
@@ -107,7 +110,7 @@ impl NextQueue {
     fn add_bag(&mut self) {
         use Piece::*;
         let mut bag = [I, O, T, L, Z, J, S];
-        bag.shuffle();
+        bag.shuffle(&mut self.rng);
         self.pieces.extend(bag);
     }
 }
