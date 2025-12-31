@@ -479,17 +479,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "stacker"
+name = "stacker_client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "macroquad",
+ "serde_json",
+ "stacker_engine",
+ "tokio",
+]
+
+[[package]]
+name = "stacker_engine"
+version = "0.1.0"
+dependencies = [
  "rand",
  "rand_chacha",
  "serde",
- "serde_json",
  "thiserror",
- "tokio",
 ]
 
 [[package]]
