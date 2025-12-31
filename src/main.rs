@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use macroquad::prelude::*;
-use stacker::{Direction, Engine, GRID_HEIGHT, Input, Orientation, PILE_WIDTH, Piece};
+use stacker_engine::{Direction, Engine, GRID_HEIGHT, Input, Orientation, PILE_WIDTH, Piece};
 
 const BLOCK_SIZE: f32 = 25.;
 
