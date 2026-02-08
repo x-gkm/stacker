@@ -11,14 +11,19 @@ const BLOCK_SIZE: f32 = 25.;
 async fn main() {
     let mut engine = Engine::new();
     let mut prev_time = Instant::now();
+    let mut residue = 0.0;
 
     loop {
         let time = Instant::now();
         let delta = time - prev_time;
+        residue += delta.as_secs_f64();
 
         handle_input(&mut engine);
 
-        engine.update(delta);
+        while residue >= 1.0/60.0 {
+            engine.update();
+            residue -= 1.0/60.0
+        }
 
         clear_background(WHITE);
 
@@ -100,11 +105,11 @@ fn handle_input(engine: &mut Engine) {
 
     for (key, action) in mapping {
         if is_key_pressed(key) {
-            engine.process_input(Input::Begin(action));
+            engine.queue_input(Input::Begin(action));
         }
 
         if is_key_released(key) {
-            engine.process_input(Input::End(action));
+            engine.queue_input(Input::End(action));
         }
     }
 }

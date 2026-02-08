@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, time::Duration};
+use std::collections::VecDeque;
 
 use pull_timer::PullTimer;
 use rand::{SeedableRng, seq::SliceRandom};
@@ -59,7 +59,7 @@ pub enum Action {
     Softdrop,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Input {
     Begin(Action),
     End(Action),
@@ -123,6 +123,7 @@ impl NextQueue {
 pub struct Engine {
     pub pile: [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT],
     pub active_piece: Option<ActivePiece>,
+    frame_inputs: Vec<Input>,
     das: DasState,
     next_queue: NextQueue,
     timer: PullTimer<GameEvent>,
@@ -140,6 +141,7 @@ impl Engine {
         Engine {
             pile,
             active_piece: None,
+            frame_inputs: Vec::new(),
             das: DasState {
                 direction: None,
                 move_left: false,
@@ -157,71 +159,75 @@ impl Engine {
         }
     }
 
-    pub fn process_input(&mut self, input: Input) {
-        use Direction::*;
-        use Input::*;
-        use Action::*;
-        match input {
-            Begin(Flip) => {
-                self.timer.add(0, GameEvent::Rotate(2));
-            }
-            Begin(Rotate(Left)) => {
-                self.timer.add(0, GameEvent::Rotate(3));
-            }
-            Begin(Rotate(Right)) => {
-                self.timer.add(0, GameEvent::Rotate(1));
-            }
-            Begin(Harddrop) => {
-                self.timer.add(0, GameEvent::Harddrop);
-            }
-            Begin(Move(Left)) => {
-                self.das.move_left = true;
-                self.timer.add(0, GameEvent::Move(Direction::Left));
-                self.timer.remove(GameEvent::Das);
-                self.timer.add(self.config.das, GameEvent::Das);
-                self.das.direction = Some(Direction::Left);
-            }
-            Begin(Move(Right)) => {
-                self.das.move_right = true;
-                self.timer.add(0, GameEvent::Move(Direction::Right));
-                self.timer.remove(GameEvent::Das);
-                self.timer.add(self.config.das, GameEvent::Das);
-                self.das.direction = Some(Direction::Right);
-            }
-            End(Move(Left)) => {
-                self.das.move_left = false;
-                self.timer.remove(GameEvent::Das);
-                if self.das.move_right {
-                    self.das.direction = Some(Direction::Right);
-                    self.timer.add(self.config.das, GameEvent::Das);
-                } else {
-                    self.das.direction = None;
-                }
-            }
-            End(Move(Right)) => {
-                self.das.move_right = false;
-                self.timer.remove(GameEvent::Das);
-                if self.das.move_left {
-                    self.das.direction = Some(Direction::Left);
-                    self.timer.add(self.config.das, GameEvent::Das);
-                } else {
-                    self.das.direction = None;
-                }
-            }
-            Begin(Softdrop) => {
-                self.timer.remove(GameEvent::Gravity);
-                self.timer.add(0, GameEvent::Softdrop);
-            }
-            End(Softdrop) => {
-                self.timer.remove(GameEvent::Softdrop);
-                self.timer.add(self.config.gravity, GameEvent::Gravity);
-            }
-            _ => (),
-        }
+    pub fn queue_input(&mut self, input: Input) {
+        self.frame_inputs.push(input);
     }
 
-    pub fn update(&mut self, delta: Duration) {
-        self.timer.update(delta.as_millis() as u32);
+    pub fn update(&mut self) {
+        for input in self.frame_inputs.drain(..) {
+            use Input::*;
+            use Action::*;
+            use Direction::*;
+            match input {
+                Begin(Flip) => {
+                    self.timer.add(0, GameEvent::Rotate(2));
+                }
+                Begin(Rotate(Left)) => {
+                    self.timer.add(0, GameEvent::Rotate(3));
+                }
+                Begin(Rotate(Right)) => {
+                    self.timer.add(0, GameEvent::Rotate(1));
+                }
+                Begin(Harddrop) => {
+                    self.timer.add(0, GameEvent::Harddrop);
+                }
+                Begin(Move(Left)) => {
+                    self.das.move_left = true;
+                    self.timer.add(0, GameEvent::Move(Direction::Left));
+                    self.timer.remove(GameEvent::Das);
+                    self.timer.add(self.config.das, GameEvent::Das);
+                    self.das.direction = Some(Direction::Left);
+                }
+                Begin(Move(Right)) => {
+                    self.das.move_right = true;
+                    self.timer.add(0, GameEvent::Move(Direction::Right));
+                    self.timer.remove(GameEvent::Das);
+                    self.timer.add(self.config.das, GameEvent::Das);
+                    self.das.direction = Some(Direction::Right);
+                }
+                End(Move(Left)) => {
+                    self.das.move_left = false;
+                    self.timer.remove(GameEvent::Das);
+                    if self.das.move_right {
+                        self.das.direction = Some(Direction::Right);
+                        self.timer.add(self.config.das, GameEvent::Das);
+                    } else {
+                        self.das.direction = None;
+                    }
+                }
+                End(Move(Right)) => {
+                    self.das.move_right = false;
+                    self.timer.remove(GameEvent::Das);
+                    if self.das.move_left {
+                        self.das.direction = Some(Direction::Left);
+                        self.timer.add(self.config.das, GameEvent::Das);
+                    } else {
+                        self.das.direction = None;
+                    }
+                }
+                Begin(Softdrop) => {
+                    self.timer.remove(GameEvent::Gravity);
+                    self.timer.add(0, GameEvent::Softdrop);
+                }
+                End(Softdrop) => {
+                    self.timer.remove(GameEvent::Softdrop);
+                    self.timer.add(self.config.gravity, GameEvent::Gravity);
+                }
+                _ => (),
+            }
+        }
+
+        self.timer.update(1000 / 60);
 
         while let Some(event) = self.timer.poll() {
             match event {
