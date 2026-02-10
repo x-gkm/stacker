@@ -72,12 +72,8 @@ pub enum Direction {
 }
 
 #[derive(PartialEq)]
-enum GameEvent {
-    Gravity,
-    Softdrop,
-    Rotate(i32),
-    Harddrop,
-    Move(Direction),
+enum TimedEvent {
+    Fall,
     Das,
     Spawn,
     ClearLines,
@@ -125,8 +121,9 @@ pub struct Engine {
     pub active_piece: Option<ActivePiece>,
     frame_inputs: Vec<Input>,
     das: DasState,
+    soft_dropping: bool,
     next_queue: NextQueue,
-    timer: PullTimer<GameEvent>,
+    timer: PullTimer<TimedEvent>,
     config: GameConfig,
 }
 
@@ -134,7 +131,7 @@ impl Engine {
     pub fn new() -> Engine {
         let mut timer = PullTimer::new();
 
-        timer.add(0, GameEvent::Spawn);
+        timer.add(0, TimedEvent::Spawn);
 
         let pile = [[None; PILE_WIDTH]; PILE_HEIGHT];
 
@@ -147,6 +144,7 @@ impl Engine {
                 move_left: false,
                 move_right: false,
             },
+            soft_dropping: false,
             next_queue: NextQueue::new(),
             timer,
             config: GameConfig {
@@ -163,65 +161,159 @@ impl Engine {
         self.frame_inputs.push(input);
     }
 
+    fn rotate(&mut self, count: i32) {
+        let Some(ref mut active_piece) = self.active_piece else {
+            return;
+        };
+
+        let mut branched_piece = active_piece.clone();
+        branched_piece.orientation.rotate_cw(count);
+
+        for n in 0..5 {
+            let (kick_x, kick_y) = kick_offset(
+                active_piece.kind,
+                active_piece.orientation,
+                branched_piece.orientation,
+                n,
+            );
+            branched_piece.x = active_piece.x + kick_x;
+            branched_piece.y = active_piece.y + kick_y;
+            branched_piece.update_blocks();
+            if !check_collision(&self.pile, &branched_piece.blocks) {
+                *active_piece = branched_piece;
+                break;
+            }
+        }
+
+        active_piece.update_ghost(&self.pile);
+    }
+
+    fn harddrop(&mut self) {
+        let Some(ref active_piece) = self.active_piece else {
+            return;
+        };
+
+        for (x, y) in active_piece.ghost_blocks {
+            self.pile[y as usize][x as usize] = Some(active_piece.kind)
+        }
+        let line_clear = any_lines_to_clear(&self.pile);
+
+        self.timer.remove(TimedEvent::Fall);
+        self.active_piece = None;
+        if line_clear {
+            self.timer
+                .add(self.config.clear_delay, TimedEvent::ClearLines);
+            self.timer.add(self.config.clear_delay, TimedEvent::Spawn);
+        } else {
+            self.timer.add(self.config.are, TimedEvent::Spawn);
+        }
+    }
+
+    fn do_move(&mut self, direction: Direction) {
+        let Some(ref mut active_piece) = self.active_piece else {
+            return;
+        };
+
+        let mut branched_piece = active_piece.clone();
+        branched_piece.x += match direction {
+            Direction::Left => -1,
+            Direction::Right => 1,
+        };
+        branched_piece.update_blocks();
+        if !check_collision(&self.pile, &branched_piece.blocks) {
+            *active_piece = branched_piece;
+        }
+        active_piece.update_ghost(&self.pile);
+    }
+
+    fn fall(&mut self) {
+        let Some(ref active_piece) = self.active_piece else {
+            return;
+        };
+
+        let mut branched_piece = active_piece.clone();
+        branched_piece.y -= 1;
+        branched_piece.update_blocks();
+        if !check_collision(&self.pile, &branched_piece.blocks) {
+            self.active_piece = Some(branched_piece);
+        }
+    }
+
+    fn handle_fall(&mut self) {
+        self.fall();
+        self.timer.add(
+            if self.soft_dropping {
+                80
+            } else {
+                self.config.gravity
+            },
+            TimedEvent::Fall,
+        );
+    }
+
     pub fn update(&mut self) {
-        for input in self.frame_inputs.drain(..) {
-            use Input::*;
+        let inputs: Vec<_> = self.frame_inputs.drain(..).collect();
+        for input in inputs {
             use Action::*;
             use Direction::*;
+            use Input::*;
             match input {
+                Begin(Rotate(Right)) => {
+                    self.rotate(1);
+                }
                 Begin(Flip) => {
-                    self.timer.add(0, GameEvent::Rotate(2));
+                    self.rotate(2);
                 }
                 Begin(Rotate(Left)) => {
-                    self.timer.add(0, GameEvent::Rotate(3));
-                }
-                Begin(Rotate(Right)) => {
-                    self.timer.add(0, GameEvent::Rotate(1));
+                    self.rotate(3);
                 }
                 Begin(Harddrop) => {
-                    self.timer.add(0, GameEvent::Harddrop);
+                    self.harddrop();
                 }
                 Begin(Move(Left)) => {
                     self.das.move_left = true;
-                    self.timer.add(0, GameEvent::Move(Direction::Left));
-                    self.timer.remove(GameEvent::Das);
-                    self.timer.add(self.config.das, GameEvent::Das);
-                    self.das.direction = Some(Direction::Left);
+                    self.das.direction = Some(Left);
+                    self.do_move(Left);
+                    self.timer.remove(TimedEvent::Das);
+                    self.timer.add(self.config.das, TimedEvent::Das);
                 }
                 Begin(Move(Right)) => {
                     self.das.move_right = true;
-                    self.timer.add(0, GameEvent::Move(Direction::Right));
-                    self.timer.remove(GameEvent::Das);
-                    self.timer.add(self.config.das, GameEvent::Das);
-                    self.das.direction = Some(Direction::Right);
+                    self.das.direction = Some(Right);
+                    self.do_move(Right);
+                    self.timer.remove(TimedEvent::Das);
+                    self.timer.add(self.config.das, TimedEvent::Das);
                 }
                 End(Move(Left)) => {
                     self.das.move_left = false;
-                    self.timer.remove(GameEvent::Das);
+                    self.timer.remove(TimedEvent::Das);
                     if self.das.move_right {
                         self.das.direction = Some(Direction::Right);
-                        self.timer.add(self.config.das, GameEvent::Das);
+                        self.timer.add(self.config.das, TimedEvent::Das);
                     } else {
                         self.das.direction = None;
                     }
                 }
                 End(Move(Right)) => {
                     self.das.move_right = false;
-                    self.timer.remove(GameEvent::Das);
+                    self.timer.remove(TimedEvent::Das);
                     if self.das.move_left {
                         self.das.direction = Some(Direction::Left);
-                        self.timer.add(self.config.das, GameEvent::Das);
+                        self.timer.add(self.config.das, TimedEvent::Das);
                     } else {
                         self.das.direction = None;
                     }
                 }
                 Begin(Softdrop) => {
-                    self.timer.remove(GameEvent::Gravity);
-                    self.timer.add(0, GameEvent::Softdrop);
+                    self.fall();
+                    self.soft_dropping = true;
+                    self.timer.remove(TimedEvent::Fall);
+                    self.timer.add(80, TimedEvent::Fall);
                 }
                 End(Softdrop) => {
-                    self.timer.remove(GameEvent::Softdrop);
-                    self.timer.add(self.config.gravity, GameEvent::Gravity);
+                    self.soft_dropping = false;
+                    self.timer.remove(TimedEvent::Fall);
+                    self.timer.add(self.config.gravity, TimedEvent::Fall);
                 }
                 _ => (),
             }
@@ -231,102 +323,19 @@ impl Engine {
 
         while let Some(event) = self.timer.poll() {
             match event {
-                GameEvent::Spawn => {
-                    self.timer.add(self.config.gravity, GameEvent::Gravity);
+                TimedEvent::Spawn => {
                     self.active_piece = Some(ActivePiece::spawn(self.next_queue.pull()));
                     self.active_piece.as_mut().unwrap().update_ghost(&self.pile);
+                    self.handle_fall();
                 }
-                GameEvent::Gravity => {
-                    let mut branched_piece = self.active_piece.clone().unwrap();
-                    branched_piece.y -= 1;
-                    branched_piece.update_blocks();
-                    if !check_collision(&self.pile, &branched_piece.blocks) {
-                        self.active_piece = Some(branched_piece);
-                    }
-
-                    self.timer.add(self.config.gravity, GameEvent::Gravity);
+                TimedEvent::Fall => {
+                    self.handle_fall();
                 }
-                GameEvent::Softdrop => {
-                    let Some(ref active_piece) = self.active_piece else {
-                        continue;
-                    };
-
-                    let mut branched_piece = active_piece.clone();
-                    branched_piece.y -= 1;
-                    branched_piece.update_blocks();
-                    if !check_collision(&self.pile, &branched_piece.blocks) {
-                        self.active_piece = Some(branched_piece);
-                    }
-
-                    self.timer.add(5, GameEvent::Softdrop);
+                TimedEvent::Das => {
+                    self.do_move(self.das.direction.unwrap());
+                    self.timer.add(self.config.arr, TimedEvent::Das);
                 }
-                GameEvent::Das => {
-                    self.timer
-                        .add(0, GameEvent::Move(self.das.direction.unwrap()));
-                    self.timer.add(self.config.arr, GameEvent::Das);
-                }
-                GameEvent::Rotate(n) => {
-                    let Some(ref mut active_piece) = self.active_piece else {
-                        continue;
-                    };
-
-                    let mut branched_piece = active_piece.clone();
-                    branched_piece.orientation.rotate_cw(n);
-
-                    for n in 0..5 {
-                        let (kick_x, kick_y) = kick_offset(
-                            active_piece.kind,
-                            active_piece.orientation,
-                            branched_piece.orientation,
-                            n,
-                        );
-                        branched_piece.x = active_piece.x + kick_x;
-                        branched_piece.y = active_piece.y + kick_y;
-                        branched_piece.update_blocks();
-                        if !check_collision(&self.pile, &branched_piece.blocks) {
-                            *active_piece = branched_piece;
-                            break;
-                        }
-                    }
-
-                    active_piece.update_ghost(&self.pile);
-                }
-                GameEvent::Harddrop => {
-                    let Some(ref active_piece) = self.active_piece else {
-                        continue;
-                    };
-
-                    for (x, y) in active_piece.ghost_blocks {
-                        self.pile[y as usize][x as usize] = Some(active_piece.kind)
-                    }
-                    let line_clear = any_lines_to_clear(&self.pile);
-
-                    self.timer.remove(GameEvent::Gravity);
-                    self.active_piece = None;
-                    if line_clear {
-                        self.timer.add(self.config.clear_delay, GameEvent::ClearLines);
-                        self.timer.add(self.config.clear_delay, GameEvent::Spawn);
-                    } else {
-                        self.timer.add(self.config.are, GameEvent::Spawn);
-                    }
-                }
-                GameEvent::Move(direction) => {
-                    let Some(ref mut active_piece) = self.active_piece else {
-                        continue;
-                    };
-
-                    let mut branched_piece = active_piece.clone();
-                    branched_piece.x += match direction {
-                        Direction::Right => 1,
-                        Direction::Left => -1,
-                    };
-                    branched_piece.update_blocks();
-                    if !check_collision(&self.pile, &branched_piece.blocks) {
-                        *active_piece = branched_piece;
-                    }
-                    active_piece.update_ghost(&self.pile);
-                }
-                GameEvent::ClearLines => {
+                TimedEvent::ClearLines => {
                     line_clear(&mut self.pile);
                 }
             }
