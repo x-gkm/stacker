@@ -93,10 +93,10 @@ pub struct NextQueue {
 }
 
 impl NextQueue {
-    fn new() -> NextQueue {
+    fn new(seed: u64) -> NextQueue {
         let mut result = NextQueue {
             pieces: VecDeque::new(),
-            rng: ChaChaRng::from_os_rng(),
+            rng: ChaChaRng::seed_from_u64(seed),
         };
 
         result.add_bag();
@@ -136,7 +136,7 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new() -> Engine {
+    pub fn new(seed: u64) -> Engine {
         let mut timer = PullTimer::new();
 
         timer.add(0, TimedEvent::Spawn);
@@ -153,7 +153,7 @@ impl Engine {
                 move_right: false,
                 soft_dropping: false,
             },
-            next_queue: NextQueue::new(),
+            next_queue: NextQueue::new(seed),
             hold: HoldPiece::Empty,
             timer,
             config: GameConfig {
