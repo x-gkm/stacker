@@ -9,7 +9,7 @@ const BLOCK_SIZE: f32 = 25.;
 
 #[macroquad::main("stacker")]
 async fn main() {
-    let mut engine = Engine::new();
+    let mut engine = Engine::new(0);
     let mut prev_time = Instant::now();
     let mut residue = 0.0;
 
