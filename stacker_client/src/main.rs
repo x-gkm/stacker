@@ -62,13 +62,13 @@ async fn main() {
             }
         }
 
-        for (index, piece) in engine.next_queue().enumerate() {
+        for (index, piece) in engine.next_queue.pieces.iter().take(5).enumerate() {
             for (x, y) in piece.blocks(Orientation::N) {
                 let x = offset_x + (x + 12) as f32 * BLOCK_SIZE;
                 let y =
                     offset_y + (GRID_HEIGHT - y - (4 - index) as i32 * 3 - 7) as f32 * BLOCK_SIZE;
 
-                draw_rectangle(x, y, BLOCK_SIZE, BLOCK_SIZE, piece_color(piece));
+                draw_rectangle(x, y, BLOCK_SIZE, BLOCK_SIZE, piece_color(*piece));
             }
         }
 

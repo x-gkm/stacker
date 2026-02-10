@@ -87,7 +87,7 @@ struct MovementState {
 }
 
 pub struct NextQueue {
-    pieces: VecDeque<Piece>,
+    pub pieces: VecDeque<Piece>,
     rng: ChaChaRng,
 }
 
@@ -127,9 +127,9 @@ pub struct Engine {
     pub pile: [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT],
     pub active_piece: Option<ActivePiece>,
     pub hold: HoldPiece,
+    pub next_queue: NextQueue,
     frame_inputs: Vec<Input>,
     movement: MovementState,
-    next_queue: NextQueue,
     timer: PullTimer<TimedEvent>,
     config: GameConfig,
 }
@@ -372,10 +372,6 @@ impl Engine {
                 }
             }
         }
-    }
-
-    pub fn next_queue(&self) -> impl Iterator<Item = Piece> {
-        self.next_queue.pieces.iter().take(5).copied()
     }
 }
 
