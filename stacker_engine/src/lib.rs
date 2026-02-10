@@ -79,10 +79,11 @@ enum TimedEvent {
     ClearLines,
 }
 
-struct DasState {
-    direction: Option<Direction>,
+struct MovementState {
+    das: Option<Direction>,
     move_left: bool,
     move_right: bool,
+    soft_dropping: bool,
 }
 
 pub struct NextQueue {
@@ -120,8 +121,7 @@ pub struct Engine {
     pub pile: [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT],
     pub active_piece: Option<ActivePiece>,
     frame_inputs: Vec<Input>,
-    das: DasState,
-    soft_dropping: bool,
+    movement: MovementState,
     next_queue: NextQueue,
     timer: PullTimer<TimedEvent>,
     config: GameConfig,
@@ -139,12 +139,12 @@ impl Engine {
             pile,
             active_piece: None,
             frame_inputs: Vec::new(),
-            das: DasState {
-                direction: None,
+            movement: MovementState {
+                das: None,
                 move_left: false,
                 move_right: false,
+                soft_dropping: false,
             },
-            soft_dropping: false,
             next_queue: NextQueue::new(),
             timer,
             config: GameConfig {
@@ -242,7 +242,7 @@ impl Engine {
     fn handle_fall(&mut self) {
         self.fall();
         self.timer.add(
-            if self.soft_dropping {
+            if self.movement.soft_dropping {
                 80
             } else {
                 self.config.gravity
@@ -271,47 +271,47 @@ impl Engine {
                     self.harddrop();
                 }
                 Begin(Move(Left)) => {
-                    self.das.move_left = true;
-                    self.das.direction = Some(Left);
+                    self.movement.move_left = true;
+                    self.movement.das = Some(Left);
                     self.do_move(Left);
                     self.timer.remove(TimedEvent::Das);
                     self.timer.add(self.config.das, TimedEvent::Das);
                 }
                 Begin(Move(Right)) => {
-                    self.das.move_right = true;
-                    self.das.direction = Some(Right);
+                    self.movement.move_right = true;
+                    self.movement.das = Some(Right);
                     self.do_move(Right);
                     self.timer.remove(TimedEvent::Das);
                     self.timer.add(self.config.das, TimedEvent::Das);
                 }
                 End(Move(Left)) => {
-                    self.das.move_left = false;
+                    self.movement.move_left = false;
                     self.timer.remove(TimedEvent::Das);
-                    if self.das.move_right {
-                        self.das.direction = Some(Direction::Right);
+                    if self.movement.move_right {
+                        self.movement.das = Some(Direction::Right);
                         self.timer.add(self.config.das, TimedEvent::Das);
                     } else {
-                        self.das.direction = None;
+                        self.movement.das = None;
                     }
                 }
                 End(Move(Right)) => {
-                    self.das.move_right = false;
+                    self.movement.move_right = false;
                     self.timer.remove(TimedEvent::Das);
-                    if self.das.move_left {
-                        self.das.direction = Some(Direction::Left);
+                    if self.movement.move_left {
+                        self.movement.das = Some(Direction::Left);
                         self.timer.add(self.config.das, TimedEvent::Das);
                     } else {
-                        self.das.direction = None;
+                        self.movement.das = None;
                     }
                 }
                 Begin(Softdrop) => {
                     self.fall();
-                    self.soft_dropping = true;
+                    self.movement.soft_dropping = true;
                     self.timer.remove(TimedEvent::Fall);
                     self.timer.add(80, TimedEvent::Fall);
                 }
                 End(Softdrop) => {
-                    self.soft_dropping = false;
+                    self.movement.soft_dropping = false;
                     self.timer.remove(TimedEvent::Fall);
                     self.timer.add(self.config.gravity, TimedEvent::Fall);
                 }
@@ -332,7 +332,7 @@ impl Engine {
                     self.handle_fall();
                 }
                 TimedEvent::Das => {
-                    self.do_move(self.das.direction.unwrap());
+                    self.do_move(self.movement.das.unwrap());
                     self.timer.add(self.config.arr, TimedEvent::Das);
                 }
                 TimedEvent::ClearLines => {
