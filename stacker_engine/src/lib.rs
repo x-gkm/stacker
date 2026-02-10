@@ -148,11 +148,11 @@ impl Engine {
             next_queue: NextQueue::new(),
             timer,
             config: GameConfig {
-                das: 100,
-                arr: 15,
-                are: 100,
-                gravity: 1000,
-                clear_delay: 100,
+                das: 6,
+                arr: 1,
+                are: 6,
+                gravity: 60,
+                clear_delay: 6,
             },
         }
     }
@@ -243,7 +243,7 @@ impl Engine {
         self.fall();
         self.timer.add(
             if self.movement.soft_dropping {
-                80
+                5
             } else {
                 self.config.gravity
             },
@@ -308,7 +308,7 @@ impl Engine {
                     self.fall();
                     self.movement.soft_dropping = true;
                     self.timer.remove(TimedEvent::Fall);
-                    self.timer.add(80, TimedEvent::Fall);
+                    self.timer.add(5, TimedEvent::Fall);
                 }
                 End(Softdrop) => {
                     self.movement.soft_dropping = false;
@@ -319,7 +319,7 @@ impl Engine {
             }
         }
 
-        self.timer.update(1000 / 60);
+        self.timer.update(1);
 
         while let Some(event) = self.timer.poll() {
             match event {
