@@ -20,9 +20,9 @@ async fn main() {
 
         handle_input(&mut engine);
 
-        while residue >= 1.0/60.0 {
+        while residue >= 1.0 / 60.0 {
             engine.update();
-            residue -= 1.0/60.0
+            residue -= 1.0 / 60.0
         }
 
         clear_background(WHITE);
