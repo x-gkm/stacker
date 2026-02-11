@@ -141,10 +141,8 @@ impl Engine {
 
         timer.add(0, TimedEvent::Spawn);
 
-        let pile = [[None; PILE_WIDTH]; PILE_HEIGHT];
-
         Engine {
-            pile,
+            pile: [[None; PILE_WIDTH]; PILE_HEIGHT],
             active_piece: None,
             frame_inputs: Vec::new(),
             movement: MovementState {
