@@ -352,7 +352,7 @@ impl Engine {
             }
         }
 
-        self.timer.update(1);
+        self.timer.tick(1);
 
         while let Some(event) = self.timer.poll() {
             match event {
