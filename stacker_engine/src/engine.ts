@@ -1,3 +1,5 @@
+import RNG from "./rng.js";
+
 export type Input =
 	| "hold"
 	| "flip"
@@ -79,7 +81,7 @@ export class Piece {
 export class Engine {
 	#frameInputs: Input[] = [];
 	#pile = new Pile();
-	#generator = new PieceGenerator();
+	#generator: PieceGenerator;
 	#activePiece: Piece;
 	#ghostPiece: Piece;
 	#holdPiece: Piece | null = null;
@@ -92,7 +94,9 @@ export class Engine {
 	#dasTimer: Timer;
 	#arrTimer: Timer;
 
-	constructor() {
+	constructor(seed: number) {
+		this.#generator = new PieceGenerator(seed);
+
 		this.#activePiece = Piece.spawn(this.#generator.pull().type);
 		this.#ghostPiece = this.#pile.calculateGhost(this.#activePiece);
 
@@ -504,8 +508,10 @@ class Pile {
 
 class PieceGenerator {
 	#pieces: Piece[] = [];
+	#rng: RNG;
 
-	constructor() {
+	constructor(seed: number) {
+		this.#rng = new RNG(seed);
 		this.fill();
 	}
 
@@ -514,7 +520,7 @@ class PieceGenerator {
 		const bag = types.map(type => new Piece(type));
 
 		while (bag.length > 0) {
-			const index = Math.floor(Math.random() * bag.length);
+			const index = this.#rng.nextInt(0, bag.length);
 			const choosen = bag.splice(index, 1)[0]!;
 			this.#pieces.push(choosen);
 		}

@@ -10,5 +10,11 @@
   },
   "keywords": [],
   "author": "",
-  "types": "./dist/engine.d.ts"
+  "types": "./dist/engine.d.ts",
+  "dependencies": {
+    "pure-rand": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0"
+  }
 }
