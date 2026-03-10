@@ -3,6 +3,7 @@ import {
 	ENGINE_FPS,
 	PILE_HEIGHT,
 	PILE_WIDTH,
+	type Input,
 	type PieceType,
 } from "stacker_engine";
 
@@ -148,34 +149,56 @@ function draw() {
 
 requestAnimationFrame(draw);
 
+const keymap: Record<string, string> = {
+	hold: "KeyA",
+	flip: "KeyS",
+	rotateLeft: "KeyD",
+	rotateRight: "KeyF",
+	harddrop: "Space",
+	moveLeft: "KeyJ",
+	softdrop: "KeyK",
+	moveRight: "KeyL",
+}
+
 document.addEventListener("keydown", ev => {
 	if (ev.repeat) {
 		return;
 	}
 
+	if (ev.code === "KeyG") {
+		keymap.hold = "ShiftLeft";
+		keymap.flip =  "KeyA";
+		keymap.rotateLeft = "KeyZ";
+		keymap.rotateRight = "KeyX";
+		keymap.harddrop = "Space";
+		keymap.moveLeft = "ArrowLeft";
+		keymap.softdrop = "ArrowDown";
+		keymap.moveRight = "ArrowRight";
+	}
+
 	switch (ev.code) {
-		case "KeyA":
+		case keymap.hold:
 			engine.queueInput("hold");
 			break;
-		case "KeyS":
+		case keymap.flip:
 			engine.queueInput("flip");
 			break;
-		case "KeyD":
+		case keymap.rotateLeft:
 			engine.queueInput("rotateLeft");
 			break;
-		case "KeyF":
+		case keymap.rotateRight:
 			engine.queueInput("rotateRight");
 			break;
-		case "Space":
+		case keymap.harddrop:
 			engine.queueInput("harddrop");
 			break;
-		case "KeyJ":
+		case keymap.moveLeft:
 			engine.queueInput("startMoveLeft");
 			break;
-		case "KeyK":
+		case keymap.softdrop:
 			engine.queueInput("startSoftdrop");
 			break;
-		case "KeyL":
+		case keymap.moveRight:
 			engine.queueInput("startMoveRight");
 			break;
 	}
@@ -187,13 +210,13 @@ document.addEventListener("keyup", ev => {
 	}
 
 	switch (ev.code) {
-		case "KeyJ":
+		case keymap.moveLeft:
 			engine.queueInput("stopMoveLeft");
 			break;
-		case "KeyK":
+		case keymap.softdrop:
 			engine.queueInput("stopSoftdrop");
 			break;
-		case "KeyL":
+		case keymap.moveRight:
 			engine.queueInput("stopMoveRight");
 			break;
 	}
