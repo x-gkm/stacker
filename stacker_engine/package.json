@@ -1,0 +1,14 @@
+{
+  "name": "stacker_engine",
+  "private": true,
+  "version": "0.1.0",
+  "main": "dist/engine.js",
+  "type": "module",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "types": "./dist/engine.d.ts"
+}
