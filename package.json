@@ -1,4 +1,4 @@
 {
     "private": "true",
-    "workspaces": ["stacker_client", "stacker_engine"]
+    "workspaces": ["stacker_client", "stacker_engine", "stacker_server"]
 }

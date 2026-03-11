@@ -1,0 +1,25 @@
+{
+  "name": "stacker_server",
+  "private": true,
+  "version": "0.1.0",
+  "description": "",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "tsc && node .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^25.4.0"
+  },
+  "dependencies": {
+    "@types/ws": "^8.18.1",
+    "stacker_engine": "^0.1.0",
+    "ws": "^8.19.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.1.0"
+  }
+}
