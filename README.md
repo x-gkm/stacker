@@ -10,13 +10,13 @@ Things left to implement:
 - [x] Kicks
 - [x] Next queue
 - [x] Hold
-- [ ] Spawn delay
-- [ ] Line clear delay
-- [ ] Input buffering
-- [ ] 0 ARR support
-- [ ] Forced lock
+- [x] Forced lock
 - [ ] Block out
 - [ ] Top out
 - [ ] Back to back
+- [ ] Spawn delay
 - [ ] Combos
 - [ ] T-spins
+- [ ] Line clear delay
+- [ ] Input buffering
+- [ ] 0 ARR support
