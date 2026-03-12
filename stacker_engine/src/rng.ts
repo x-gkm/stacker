@@ -3,7 +3,7 @@ import { xoroshiro128plus } from "pure-rand/generator/xoroshiro128plus";
 import type { JumpableRandomGenerator } from "pure-rand/types/JumpableRandomGenerator";
 
 export default class RNG {
-	#generator: JumpableRandomGenerator
+	#generator: JumpableRandomGenerator;
 
 	constructor(seed: number) {
 		this.#generator = xoroshiro128plus(seed);

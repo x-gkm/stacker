@@ -9,7 +9,7 @@ wss.on("connection", ws => {
 	const seed = Date.now() ^ (Math.random() * 0x100000000);
 
 	for (const client of wss.clients) {
-		client.send(JSON.stringify({ seed }))
+		client.send(JSON.stringify({ seed }));
 	}
 
 	ws.on("message", msg => {
@@ -18,7 +18,7 @@ wss.on("connection", ws => {
 				continue;
 			}
 
-			client.send(msg.toString())
+			client.send(msg.toString());
 		}
-	})
-})
+	});
+});

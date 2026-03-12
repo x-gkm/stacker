@@ -167,7 +167,7 @@ const keymap: Record<string, string> = {
 	moveLeft: "KeyJ",
 	softdrop: "KeyK",
 	moveRight: "KeyL",
-}
+};
 
 document.addEventListener("keydown", ev => {
 	if (ev.repeat) {
