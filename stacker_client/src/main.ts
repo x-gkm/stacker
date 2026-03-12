@@ -150,7 +150,37 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 	}
 }
 
+const socket = new WebSocket("/ws");
+socket.addEventListener("message", msg => {
+	const obj = JSON.parse(msg.data);
+
+	switch (obj.command) {
+		case "addOpponent":
+			opponents.push({ id: obj.id, engine: new Engine(0) });
+			break;
+		case "removeOpponent":
+			opponents.splice(
+				opponents.findIndex(({ id }) => obj.id === id),
+				1,
+			);
+			break;
+		case "opponentData":
+			const opponent = opponents.find(({ id }) => id === obj.id).engine;
+			switch (obj.data.command) {
+				case "inputs":
+					for (const input of obj.data.inputs) {
+						opponent.queueInput(input);
+					}
+					break;
+				case "update":
+					opponent.update();
+					break;
+			}
+	}
+});
+
 const engine = new Engine(0);
+const opponents: { id: number; engine: Engine }[] = [];
 let previousTime = performance.now();
 let residueTime = 0;
 
@@ -162,12 +192,18 @@ function draw() {
 	while (residueTime >= 1000 / ENGINE_FPS) {
 		residueTime -= 1000 / ENGINE_FPS;
 		engine.update();
+		if (socket.readyState === WebSocket.OPEN) {
+			socket.send(JSON.stringify({ command: "update" }));
+		}
 	}
 
 	ctx.fillStyle = "#000000";
 	ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-	renderEngine(engine, 0, 1);
+	const engines = [engine, ...opponents.map(({ engine }) => engine)];
+	for (let i = 0; i < engines.length; i++) {
+		renderEngine(engines[i], i, engines.length);
+	}
 
 	previousTime = currentTime;
 	requestAnimationFrame(draw);
@@ -202,31 +238,39 @@ document.addEventListener("keydown", ev => {
 		keymap.moveRight = "ArrowRight";
 	}
 
+	const inputs: Input[] = [];
 	switch (ev.code) {
 		case keymap.hold:
-			engine.queueInput("hold");
+			inputs.push("hold");
 			break;
 		case keymap.flip:
-			engine.queueInput("flip");
+			inputs.push("flip");
 			break;
 		case keymap.rotateLeft:
-			engine.queueInput("rotateLeft");
+			inputs.push("rotateLeft");
 			break;
 		case keymap.rotateRight:
-			engine.queueInput("rotateRight");
+			inputs.push("rotateRight");
 			break;
 		case keymap.harddrop:
-			engine.queueInput("harddrop");
+			inputs.push("harddrop");
 			break;
 		case keymap.moveLeft:
-			engine.queueInput("startMoveLeft");
+			inputs.push("startMoveLeft");
 			break;
 		case keymap.softdrop:
-			engine.queueInput("startSoftdrop");
+			inputs.push("startSoftdrop");
 			break;
 		case keymap.moveRight:
-			engine.queueInput("startMoveRight");
+			inputs.push("startMoveRight");
 			break;
+	}
+
+	for (const input of inputs) {
+		engine.queueInput(input);
+	}
+	if (socket.readyState === WebSocket.OPEN) {
+		socket.send(JSON.stringify({ command: "inputs", inputs }));
 	}
 });
 
@@ -235,15 +279,23 @@ document.addEventListener("keyup", ev => {
 		return;
 	}
 
+	const inputs: Input[] = [];
 	switch (ev.code) {
 		case keymap.moveLeft:
-			engine.queueInput("stopMoveLeft");
+			inputs.push("stopMoveLeft");
 			break;
 		case keymap.softdrop:
-			engine.queueInput("stopSoftdrop");
+			inputs.push("stopSoftdrop");
 			break;
 		case keymap.moveRight:
-			engine.queueInput("stopMoveRight");
+			inputs.push("stopMoveRight");
 			break;
+	}
+
+	for (const input of inputs) {
+		engine.queueInput(input);
+	}
+	if (socket.readyState === WebSocket.OPEN) {
+		socket.send(JSON.stringify({ command: "inputs", inputs }));
 	}
 });
