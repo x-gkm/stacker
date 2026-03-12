@@ -13,9 +13,9 @@ Things left to implement:
 - [x] Forced lock
 - [x] Block out
 - [ ] Back to back
-- [ ] Spawn delay
 - [ ] Combos
 - [ ] T-spins
+- [ ] Spawn delay
 - [ ] Line clear delay
 - [ ] Input buffering
 - [ ] 0 ARR support
