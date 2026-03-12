@@ -24,6 +24,9 @@ const BOARD_ORIGIN_Y =
 
 const ctx = stacker.getContext("2d")!;
 
+const GHOST_LOCKED_COLOR = "#4d4d4d";
+const GAME_OVER_COLOR = "#242424";
+
 function blockColor(block: PieceType): string {
 	switch (block) {
 		case "i":
@@ -92,7 +95,13 @@ function draw() {
 				continue;
 			}
 
-			drawBlock(BOARD_ORIGIN_X, BOARD_ORIGIN_Y, j, i, blockColor(block));
+			drawBlock(
+				BOARD_ORIGIN_X,
+				BOARD_ORIGIN_Y,
+				j,
+				i,
+				!engine.gameOver ? blockColor(block) : GAME_OVER_COLOR,
+			);
 		}
 	}
 
@@ -129,9 +138,9 @@ function draw() {
 	}
 
 	if (engine.hold !== null) {
-		const color = !engine.holdLocked ? 
-				blockColor(engine.hold.type)
-				: "#4d4d4d";
+		const color = !engine.holdLocked
+			? blockColor(engine.hold.type)
+			: GHOST_LOCKED_COLOR;
 		for (const [x, y] of engine.hold.blocks) {
 			drawBlock(
 				BOARD_ORIGIN_X,

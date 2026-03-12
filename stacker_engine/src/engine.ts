@@ -119,6 +119,7 @@ export class Engine {
 	#arrTimer: Timer;
 	#lockTimer: Timer;
 	#resetCounter: number;
+	#gameOver: boolean = false;
 
 	constructor(seed: number) {
 		this.#generator = new PieceGenerator(seed);
@@ -162,10 +163,18 @@ export class Engine {
 	}
 
 	queueInput(input: Input) {
+		if (this.#gameOver) {
+			return;
+		}
+
 		this.#frameInputs.push(input);
 	}
 
 	update() {
+		if (this.#gameOver) {
+			return;
+		}
+
 		this.#gravityTimer.tick();
 		this.#softdropTimer.tick();
 		this.#dasTimer.tick();
@@ -301,6 +310,10 @@ export class Engine {
 			type = this.#generator.pull().type;
 		}
 		this.#setActive(Piece.spawn(type));
+		if (this.#pile.hasOverlap(this.#activePiece.blocks)) {
+			this.#gameOver = true;
+			return;
+		}
 		this.#resetCounter = 0;
 		this.#lowestY = Math.min(
 			...this.#activePiece.blocks.map(([_, y]) => y),
@@ -335,6 +348,10 @@ export class Engine {
 		if (this.#resetCounter >= 15) {
 			this.#tryLock();
 		}
+	}
+
+	get gameOver(): boolean {
+		return this.#gameOver;
 	}
 
 	get pile(): readonly (readonly Cell[])[] {

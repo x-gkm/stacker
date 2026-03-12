@@ -11,8 +11,7 @@ Things left to implement:
 - [x] Next queue
 - [x] Hold
 - [x] Forced lock
-- [ ] Block out
-- [ ] Top out
+- [x] Block out
 - [ ] Back to back
 - [ ] Spawn delay
 - [ ] Combos
