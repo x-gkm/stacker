@@ -9,18 +9,16 @@ import {
 
 const stacker = document.querySelector("#stacker") as HTMLCanvasElement;
 
-const SCREEN_WIDTH = 800;
-const SCREEN_HEIGHT = 600;
-
-stacker.width = SCREEN_WIDTH;
-stacker.height = SCREEN_HEIGHT;
+stacker.width = window.innerWidth;
+stacker.height = window.innerHeight;
 
 const BOARD_HEIGHT = 20;
 const BLOCK_SIZE = 20;
 
-const BOARD_ORIGIN_X = (SCREEN_WIDTH - PILE_WIDTH * BLOCK_SIZE) / 2;
-const BOARD_ORIGIN_Y =
-	(SCREEN_HEIGHT - BOARD_HEIGHT * BLOCK_SIZE) / 2 + BOARD_HEIGHT * BLOCK_SIZE;
+window.addEventListener("resize", () => {
+	stacker.width = window.innerWidth;
+	stacker.height = window.innerHeight;
+});
 
 const ctx = stacker.getContext("2d")!;
 
@@ -62,30 +60,29 @@ function drawBlock(
 	);
 }
 
-const engine = new Engine();
-let previousTime = performance.now();
-let residueTime = 0;
-
-function draw() {
-	ctx.fillStyle = "#000000";
-	ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-	const currentTime = performance.now();
-	const deltaTime = currentTime - previousTime;
-	residueTime += deltaTime;
-
-	while (residueTime >= 1000 / ENGINE_FPS) {
-		residueTime -= 1000 / ENGINE_FPS;
-		engine.update();
-	}
-
-	ctx.strokeStyle = "#ffffff";
-	ctx.strokeRect(
-		(SCREEN_WIDTH - PILE_WIDTH * BLOCK_SIZE) / 2,
-		(SCREEN_HEIGHT - BOARD_HEIGHT * BLOCK_SIZE) / 2,
-		PILE_WIDTH * BLOCK_SIZE,
-		BOARD_HEIGHT * BLOCK_SIZE,
+function renderEngine(engine: Engine, nth: number, engineCount: number) {
+	const totalWidth = Math.floor(
+		22 * engineCount * BLOCK_SIZE - 3 * BLOCK_SIZE,
 	);
+	const boardOriginX = Math.floor(
+		4 * BLOCK_SIZE +
+			22 * nth * BLOCK_SIZE +
+			(window.innerWidth - totalWidth) / 2,
+	);
+	const boardOriginY = Math.floor(
+		(window.innerHeight - BOARD_HEIGHT * BLOCK_SIZE) / 2 +
+			BOARD_HEIGHT * BLOCK_SIZE,
+	);
+
+	for (let i = 0; i < engineCount; i++) {
+		ctx.strokeStyle = "#ffffff";
+		ctx.strokeRect(
+			boardOriginX,
+			(window.innerHeight - BOARD_HEIGHT * BLOCK_SIZE) / 2,
+			PILE_WIDTH * BLOCK_SIZE,
+			BOARD_HEIGHT * BLOCK_SIZE,
+		);
+	}
 
 	for (let i = 0; i < PILE_HEIGHT; i++) {
 		for (let j = 0; j < PILE_WIDTH; j++) {
@@ -96,8 +93,8 @@ function draw() {
 			}
 
 			drawBlock(
-				BOARD_ORIGIN_X,
-				BOARD_ORIGIN_Y,
+				boardOriginX,
+				boardOriginY,
 				j,
 				i,
 				!engine.gameOver ? blockColor(block) : GAME_OVER_COLOR,
@@ -107,8 +104,8 @@ function draw() {
 
 	for (const [x, y] of engine.piece.blocks) {
 		drawBlock(
-			BOARD_ORIGIN_X,
-			BOARD_ORIGIN_Y,
+			boardOriginX,
+			boardOriginY,
 			x,
 			y,
 			blockColor(engine.piece.type),
@@ -117,8 +114,8 @@ function draw() {
 
 	for (const [x, y] of engine.ghost.blocks) {
 		drawBlock(
-			BOARD_ORIGIN_X,
-			BOARD_ORIGIN_Y,
+			boardOriginX,
+			boardOriginY,
 			x,
 			y,
 			blockColor(engine.ghost.type) + "60",
@@ -128,8 +125,8 @@ function draw() {
 	for (const [index, next] of engine.next.entries()) {
 		for (const [x, y] of next.blocks) {
 			drawBlock(
-				BOARD_ORIGIN_X,
-				BOARD_ORIGIN_Y,
+				boardOriginX,
+				boardOriginY,
 				x + PILE_WIDTH + 2,
 				BOARD_HEIGHT - 5 * 3 + y + (4 - index) * 3,
 				blockColor(next.type),
@@ -143,14 +140,34 @@ function draw() {
 			: GHOST_LOCKED_COLOR;
 		for (const [x, y] of engine.hold.blocks) {
 			drawBlock(
-				BOARD_ORIGIN_X,
-				BOARD_ORIGIN_Y,
+				boardOriginX,
+				boardOriginY,
 				x - 4,
 				BOARD_HEIGHT - 3 + y,
 				color,
 			);
 		}
 	}
+}
+
+const engine = new Engine(0);
+let previousTime = performance.now();
+let residueTime = 0;
+
+function draw() {
+	const currentTime = performance.now();
+	const deltaTime = currentTime - previousTime;
+	residueTime += deltaTime;
+
+	while (residueTime >= 1000 / ENGINE_FPS) {
+		residueTime -= 1000 / ENGINE_FPS;
+		engine.update();
+	}
+
+	ctx.fillStyle = "#000000";
+	ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+	renderEngine(engine, 0, 1);
 
 	previousTime = currentTime;
 	requestAnimationFrame(draw);
