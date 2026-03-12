@@ -309,12 +309,12 @@ export class Engine {
 		if (type === undefined) {
 			type = this.#generator.pull().type;
 		}
+		this.#resetCounter = 0;
 		this.#setActive(Piece.spawn(type));
 		if (this.#pile.hasOverlap(this.#activePiece.blocks)) {
 			this.#gameOver = true;
 			return;
 		}
-		this.#resetCounter = 0;
 		this.#lowestY = Math.min(
 			...this.#activePiece.blocks.map(([_, y]) => y),
 		);
@@ -343,11 +343,11 @@ export class Engine {
 			}
 		}
 
-		this.#resetCounter++;
-
 		if (this.#resetCounter >= 15) {
 			this.#tryLock();
 		}
+
+		this.#resetCounter++;
 	}
 
 	get gameOver(): boolean {
