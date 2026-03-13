@@ -220,7 +220,7 @@ document.addEventListener("keydown", ev => {
 
 	if (ev.code === "KeyG") {
 		keymap.hold = "ShiftLeft";
-		keymap.flip =  "KeyA";
+		keymap.flip = "KeyA";
 		keymap.rotateLeft = "KeyZ";
 		keymap.rotateRight = "KeyX";
 		keymap.harddrop = "Space";
@@ -229,37 +229,25 @@ document.addEventListener("keydown", ev => {
 		keymap.moveRight = "ArrowRight";
 	}
 
+	const mapping: Record<string, Input> = {
+		[keymap.hold]: "hold",
+		[keymap.flip]: "flip",
+		[keymap.rotateLeft]: "rotateLeft",
+		[keymap.rotateRight]: "rotateRight",
+		[keymap.harddrop]: "harddrop",
+		[keymap.moveLeft]: "startMoveLeft",
+		[keymap.softdrop]: "startSoftdrop",
+		[keymap.moveRight]: "startMoveRight",
+	};
+
 	const inputs: Input[] = [];
-	switch (ev.code) {
-		case keymap.hold:
-			inputs.push("hold");
-			break;
-		case keymap.flip:
-			inputs.push("flip");
-			break;
-		case keymap.rotateLeft:
-			inputs.push("rotateLeft");
-			break;
-		case keymap.rotateRight:
-			inputs.push("rotateRight");
-			break;
-		case keymap.harddrop:
-			inputs.push("harddrop");
-			break;
-		case keymap.moveLeft:
-			inputs.push("startMoveLeft");
-			break;
-		case keymap.softdrop:
-			inputs.push("startSoftdrop");
-			break;
-		case keymap.moveRight:
-			inputs.push("startMoveRight");
-			break;
+	for (const [keyCode, input] of Object.entries(mapping)) {
+		if (ev.code === keyCode) {
+			engine.queueInput(input);
+			inputs.push(input);
+		}
 	}
 
-	for (const input of inputs) {
-		engine.queueInput(input);
-	}
 	if (socket.readyState === WebSocket.OPEN) {
 		socket.send(JSON.stringify({ command: "inputs", inputs }));
 	}
@@ -270,22 +258,20 @@ document.addEventListener("keyup", ev => {
 		return;
 	}
 
+	const mapping: Record<string, Input> = {
+		[keymap.moveLeft]: "stopMoveLeft",
+		[keymap.softdrop]: "stopSoftdrop",
+		[keymap.moveRight]: "stopMoveRight",
+	};
+
 	const inputs: Input[] = [];
-	switch (ev.code) {
-		case keymap.moveLeft:
-			inputs.push("stopMoveLeft");
-			break;
-		case keymap.softdrop:
-			inputs.push("stopSoftdrop");
-			break;
-		case keymap.moveRight:
-			inputs.push("stopMoveRight");
-			break;
+	for (const [keyCode, input] of Object.entries(mapping)) {
+		if (ev.code === keyCode) {
+			engine.queueInput(input);
+			inputs.push(input);
+		}
 	}
 
-	for (const input of inputs) {
-		engine.queueInput(input);
-	}
 	if (socket.readyState === WebSocket.OPEN) {
 		socket.send(JSON.stringify({ command: "inputs", inputs }));
 	}
