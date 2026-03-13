@@ -25,24 +25,15 @@ const ctx = stacker.getContext("2d")!;
 const GHOST_LOCKED_COLOR = "#4d4d4d";
 const GAME_OVER_COLOR = "#242424";
 
-function blockColor(block: PieceType): string {
-	switch (block) {
-		case "i":
-			return "#18cfe7";
-		case "o":
-			return "#e2df14";
-		case "t":
-			return "#960de6";
-		case "l":
-			return "#e9900c";
-		case "z":
-			return "#f03a1a";
-		case "j":
-			return "#336ce7";
-		case "s":
-			return "#27d444";
-	}
-}
+const BLOCK_COLOR: Record<PieceType, string> = {
+	i: "#18cfe7",
+	o: "#e2df14",
+	t: "#960de6",
+	l: "#e9900c",
+	z: "#f03a1a",
+	j: "#336ce7",
+	s: "#27d444",
+};
 
 function drawBlock(
 	originX: number,
@@ -97,7 +88,7 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 				boardOriginY,
 				j,
 				i,
-				!engine.gameOver ? blockColor(block) : GAME_OVER_COLOR,
+				!engine.gameOver ? BLOCK_COLOR[block] : GAME_OVER_COLOR,
 			);
 		}
 	}
@@ -108,7 +99,7 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 			boardOriginY,
 			x,
 			y,
-			blockColor(engine.piece.type),
+			BLOCK_COLOR[engine.piece.type],
 		);
 	}
 
@@ -118,7 +109,7 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 			boardOriginY,
 			x,
 			y,
-			blockColor(engine.ghost.type) + "60",
+			BLOCK_COLOR[engine.ghost.type] + "60",
 		);
 	}
 
@@ -129,14 +120,14 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 				boardOriginY,
 				x + PILE_WIDTH + 2,
 				BOARD_HEIGHT - 5 * 3 + y + (4 - index) * 3,
-				blockColor(next.type),
+				BLOCK_COLOR[next.type],
 			);
 		}
 	}
 
 	if (engine.hold !== null) {
 		const color = !engine.holdLocked
-			? blockColor(engine.hold.type)
+			? BLOCK_COLOR[engine.hold.type]
 			: GHOST_LOCKED_COLOR;
 		for (const [x, y] of engine.hold.blocks) {
 			drawBlock(
