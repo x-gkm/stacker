@@ -22,6 +22,13 @@ export const PILE_HEIGHT = 40;
 
 export const ENGINE_FPS = 60;
 
+type SerializedPiece = {
+	type: PieceType;
+	x: number;
+	y: number;
+	direction: Rotation;
+};
+
 export class Piece {
 	#type: PieceType;
 	#coords: Coords;
@@ -92,6 +99,19 @@ export class Piece {
 		return true;
 	}
 
+	serialize(): SerializedPiece {
+		return {
+			type: this.#type,
+			x: this.#coords[0],
+			y: this.#coords[1],
+			direction: this.#direction,
+		};
+	}
+
+	static deserialize(state: SerializedPiece): Piece {
+		return new Piece(state.type, state.x, state.y, state.direction);
+	}
+
 	get type(): PieceType {
 		return this.#type;
 	}
@@ -100,6 +120,28 @@ export class Piece {
 		return this.#blocks;
 	}
 }
+
+export type SerializedEngine = {
+	frameInputs: Input[];
+	pile: Cell[][];
+	nexts: PieceType[];
+	generatorState: number[];
+	activePiece: SerializedPiece;
+	lowestY: number;
+	ghostPiece: SerializedPiece;
+	holdPiece: PieceType | null;
+	holdLocked: boolean;
+	gravityTime: number;
+	softdropTime: number;
+	moveLeft: boolean;
+	moveRight: boolean;
+	dasDirection: "left" | "right" | null;
+	dasTime: number;
+	arrTime: number;
+	lockTime: number;
+	resetCounter: number;
+	gameOver: boolean;
+};
 
 export class Engine {
 	#frameInputs: Input[] = [];
@@ -160,6 +202,55 @@ export class Engine {
 		}, 30);
 
 		this.#resetCounter = 0;
+	}
+
+	serialize(): SerializedEngine {
+		return {
+			frameInputs: this.#frameInputs.slice(),
+			pile: structuredClone(this.#pile.rows),
+			nexts: this.#generator.pieces.map(piece => piece.type),
+			generatorState: this.#generator.getState().slice(),
+			activePiece: this.#activePiece.serialize(),
+			lowestY: this.#lowestY,
+			ghostPiece: this.#ghostPiece.serialize(),
+			holdPiece: this.#holdPiece?.type ?? null,
+			holdLocked: this.#holdLocked,
+			gravityTime: this.#gravityTimer.remaining,
+			softdropTime: this.#softdropTimer.remaining,
+			moveLeft: this.#moveLeft,
+			moveRight: this.#moveRight,
+			dasDirection: this.#dasDirection,
+			dasTime: this.#dasTimer.remaining,
+			arrTime: this.#arrTimer.remaining,
+			lockTime: this.#lockTimer.remaining,
+			resetCounter: this.#resetCounter,
+			gameOver: this.#gameOver,
+		};
+	}
+
+	static deserialize(state: SerializedEngine): Engine {
+		const engine = new Engine(0);
+
+		engine.#frameInputs = state.frameInputs;
+		engine.#pile.rows = state.pile;
+		engine.#generator = PieceGenerator.deserialize(state.nexts, state.generatorState);
+		engine.#activePiece = Piece.deserialize(state.activePiece);
+		engine.#lowestY = state.lowestY;
+		engine.#ghostPiece = Piece.deserialize(state.ghostPiece);
+		engine.#holdPiece = state.holdPiece ? new Piece(state.holdPiece) : null;
+		engine.#holdLocked = state.holdLocked;
+		engine.#gravityTimer.remaining = state.gravityTime;
+		engine.#softdropTimer.remaining =state.softdropTime;
+		engine.#moveLeft = state.moveLeft;
+		engine.#moveRight = state.moveRight;
+		engine.#dasDirection = state.dasDirection;
+		engine.#dasTimer.remaining = state.dasTime;
+		engine.#arrTimer.remaining = state.arrTime;
+		engine.#lockTimer.remaining = state.lockTime;
+		engine.#resetCounter = state.resetCounter;
+		engine.#gameOver = state.gameOver;
+
+		return engine;
 	}
 
 	queueInput(input: Input) {
@@ -375,7 +466,7 @@ export class Engine {
 	}
 
 	get next(): Piece[] {
-		return this.#generator.next;
+		return this.#generator.pieces.slice(0, 5);
 	}
 }
 
@@ -541,11 +632,11 @@ function kickOffset(type: PieceType, rotation: Rotation, n: number): Coords {
 }
 
 class Pile {
-	#rows: Cell[][] = [];
+	rows: Cell[][] = [];
 
 	constructor() {
 		for (let i = 0; i < PILE_HEIGHT; i++) {
-			this.#rows.push(this.#emptyRow());
+			this.rows.push(this.#emptyRow());
 		}
 	}
 
@@ -564,7 +655,7 @@ class Pile {
 				x >= PILE_WIDTH ||
 				y < 0 ||
 				y >= PILE_HEIGHT ||
-				this.#rows[y]?.[x] != null
+				this.rows[y]?.[x] != null
 			) {
 				return true;
 			}
@@ -574,19 +665,19 @@ class Pile {
 
 	addPiece(piece: Piece) {
 		for (const [x, y] of piece.blocks) {
-			this.#rows[y]![x] = piece.type;
+			this.rows[y]![x] = piece.type;
 		}
 
 		for (let i = PILE_HEIGHT - 1; i >= 0; i--) {
 			let full = true;
 			for (let j = 0; j < PILE_WIDTH; j++) {
-				if (this.#rows[i]?.[j] === null) {
+				if (this.rows[i]?.[j] === null) {
 					full = false;
 				}
 			}
 			if (full) {
-				this.#rows.splice(i, 1);
-				this.#rows.push(this.#emptyRow());
+				this.rows.splice(i, 1);
+				this.rows.push(this.#emptyRow());
 			}
 		}
 	}
@@ -600,49 +691,52 @@ class Pile {
 			piece = branched;
 		}
 	}
-
-	get rows(): readonly (readonly Cell[])[] {
-		return this.#rows;
-	}
 }
 
 class PieceGenerator {
-	#pieces: Piece[] = [];
+	pieces: Piece[] = [];
 	#rng: RNG;
 
 	constructor(seed: number) {
 		this.#rng = new RNG(seed);
-		this.fill();
+		this.#fill();
 	}
 
-	private fill() {
+	static deserialize(nexts: PieceType[], state: number[]): PieceGenerator {
+		const generator = new PieceGenerator(0);
+		generator.#rng = new RNG(state);
+		generator.pieces = nexts.map(type => new Piece(type));
+		return generator
+	}
+
+	#fill() {
 		const types: PieceType[] = ["i", "o", "t", "l", "z", "j", "s"];
 		const bag = types.map(type => new Piece(type));
 
 		while (bag.length > 0) {
 			const index = this.#rng.nextInt(0, bag.length);
 			const choosen = bag.splice(index, 1)[0]!;
-			this.#pieces.push(choosen);
+			this.pieces.push(choosen);
 		}
 	}
 
 	pull(): Piece {
-		if (this.#pieces.length < 5) {
-			this.fill();
+		if (this.pieces.length < 5) {
+			this.#fill();
 		}
 
-		return this.#pieces.shift()!;
+		return this.pieces.shift()!;
 	}
 
-	get next(): Piece[] {
-		return this.#pieces.slice(0, 5);
+	getState(): readonly number[] {
+		return this.#rng.getState();
 	}
 }
 
 class Timer {
 	#fn: () => void;
 	#timeout: number;
-	#remaining: number = 0;
+	remaining: number = 0;
 
 	constructor(fn: () => void, timeout: number) {
 		this.#fn = fn;
@@ -650,20 +744,20 @@ class Timer {
 	}
 
 	tick() {
-		if (this.#remaining <= 0) {
+		if (this.remaining <= 0) {
 			return;
 		}
-		this.#remaining--;
-		if (this.#remaining <= 0) {
+		this.remaining--;
+		if (this.remaining <= 0) {
 			this.#fn();
 		}
 	}
 
 	restart() {
-		this.#remaining = this.#timeout;
+		this.remaining = this.#timeout;
 	}
 
 	stop() {
-		this.#remaining = 0;
+		this.remaining = 0;
 	}
 }

@@ -146,8 +146,14 @@ socket.addEventListener("message", msg => {
 	const obj = JSON.parse(msg.data);
 
 	switch (obj.command) {
-		case "addOpponent":
+		case "newOpponent":
 			opponents.push({ id: obj.id, engine: new Engine(0) });
+			break;
+		case "addOpponent":
+			opponents.push({
+				id: obj.id,
+				engine: Engine.deserialize(obj.state),
+			});
 			break;
 		case "removeOpponent":
 			opponents.splice(

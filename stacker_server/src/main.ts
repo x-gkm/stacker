@@ -14,13 +14,13 @@ class Client {
 	static #nextId = 0;
 	#ws: WebSocket;
 	#id: number;
-	#frames: ClientMessage[] = [];
+	#engine = new Engine(0);
 	constructor(ws: WebSocket) {
 		this.#ws = ws;
 		this.#id = Client.#nextId++;
 		Client.#clients[this.#id] = this;
 
-		this.#broadcast("addOpponent");
+		this.#broadcast("newOpponent");
 		this.#ws.on("close", () => {
 			this.#broadcast("removeOpponent");
 			delete Client.#clients[this.#id];
@@ -28,7 +28,16 @@ class Client {
 
 		this.#ws.on("message", msg => {
 			const data: ClientMessage = JSON.parse(msg.toString());
-			this.#frames.push(data);
+			switch (data.command) {
+				case "inputs":
+					for (const input of data.inputs) {
+						this.#engine.queueInput(input);
+					}
+					break;
+				case "update":
+					this.#engine.update();
+					break;
+			}
 			this.#broadcast("opponentData", { data });
 		});
 
@@ -37,10 +46,7 @@ class Client {
 				continue;
 			}
 
-			this.#send("addOpponent", { id: client.#id });
-			for (const data of client.#frames) {
-				this.#send("opponentData", { id: client.#id, data });
-			}
+			this.#send("addOpponent", { id: client.#id, state: client.#engine.serialize() });
 		}
 	}
 
