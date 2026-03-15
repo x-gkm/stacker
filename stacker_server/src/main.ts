@@ -36,6 +36,9 @@ class Client {
 					break;
 				case "update":
 					this.#engine.update();
+					if (this.#engine.attack > 0) {
+						this.#applyAttack();
+					}
 					break;
 			}
 			this.#broadcast("opponentData", { data });
@@ -50,6 +53,16 @@ class Client {
 				id: client.#id,
 				state: client.#engine.serialize(),
 			});
+		}
+	}
+
+	#applyAttack() {
+		for (const client of Object.values(Client.#clients)) {
+			if (client.#id === this.#id) {
+				continue;
+			}
+
+			client.#engine.queueGarbage(this.#engine.attack);
 		}
 	}
 

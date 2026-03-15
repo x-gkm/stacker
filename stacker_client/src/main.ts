@@ -25,7 +25,7 @@ const ctx = stacker.getContext("2d")!;
 const GHOST_LOCKED_COLOR = "#4d4d4d";
 const GAME_OVER_COLOR = "#242424";
 
-const BLOCK_COLOR: Record<PieceType, string> = {
+const BLOCK_COLOR: Record<PieceType | "g", string> = {
 	i: "#18cfe7",
 	o: "#e2df14",
 	t: "#960de6",
@@ -33,6 +33,7 @@ const BLOCK_COLOR: Record<PieceType, string> = {
 	z: "#f03a1a",
 	j: "#336ce7",
 	s: "#27d444",
+	g: "#818181",
 };
 
 function drawBlock(
@@ -139,6 +140,21 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 			);
 		}
 	}
+
+	ctx.fillStyle = "#c91d17";
+	let garbageOffset = 0;
+	for (let i = engine.garbageQueue.length - 1; i >= 0; i--) {
+		const garbage = engine.garbageQueue[i];
+		const width = 10;
+		const gap = 2;
+		ctx.fillRect(
+			boardOriginX - width,
+			boardOriginY - (garbage + garbageOffset) * BLOCK_SIZE + gap,
+			width,
+			garbage * BLOCK_SIZE - gap,
+		);
+		garbageOffset += garbage;
+	}
 }
 
 const socket = new WebSocket("/ws");
@@ -171,6 +187,9 @@ socket.addEventListener("message", msg => {
 					break;
 				case "update":
 					opponent.update();
+					if (opponent.attack > 0) {
+						engine.queueGarbage(opponent.attack);
+					}
 					break;
 			}
 	}
@@ -189,6 +208,11 @@ function draw() {
 	while (residueTime >= 1000 / ENGINE_FPS) {
 		residueTime -= 1000 / ENGINE_FPS;
 		engine.update();
+		if (engine.attack > 0) {
+			for (const opponent of opponents) {
+				opponent.engine.queueGarbage(engine.attack);
+			}
+		}
 		if (socket.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify({ command: "update" }));
 		}

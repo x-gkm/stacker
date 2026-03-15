@@ -13,7 +13,7 @@ export type Input =
 	| "startMoveRight"
 	| "stopMoveRight";
 export type PieceType = "i" | "o" | "t" | "l" | "z" | "j" | "s";
-export type Cell = PieceType | null;
+export type Cell = PieceType | "g" | null;
 export type Coords = [number, number];
 export type Rotation = 0 | 1 | 2 | 3;
 
@@ -121,6 +121,8 @@ export class Piece {
 	}
 }
 
+type Garbage = { height: number; column: number };
+
 export type SerializedEngine = {
 	frameInputs: Input[];
 	pile: SerializedPile;
@@ -140,6 +142,9 @@ export type SerializedEngine = {
 	lockTimer: SerializedTimer;
 	resetCounter: number;
 	gameOver: boolean;
+	garbageRngState: number[];
+	garbageQueue: number[];
+	attack: number;
 };
 
 export class Engine {
@@ -161,6 +166,9 @@ export class Engine {
 	#lockTimer: Timer;
 	#resetCounter: number;
 	#gameOver: boolean = false;
+	#garbageRng: RNG;
+	#garbageQueue: number[] = [];
+	#attack: number = 0;
 
 	constructor(seed: number) {
 		this.#generator = new PieceGenerator(seed);
@@ -179,6 +187,8 @@ export class Engine {
 		this.#lockTimer = new Timer(30);
 
 		this.#resetCounter = 0;
+
+		this.#garbageRng = new RNG(seed);
 	}
 
 	serialize(): SerializedEngine {
@@ -201,6 +211,9 @@ export class Engine {
 			lockTimer: this.#lockTimer.serialize(),
 			resetCounter: this.#resetCounter,
 			gameOver: this.#gameOver,
+			garbageRngState: this.#garbageRng.getState().slice(),
+			garbageQueue: this.#garbageQueue.slice(),
+			attack: this.#attack,
 		};
 	}
 
@@ -225,8 +238,15 @@ export class Engine {
 		engine.#lockTimer = Timer.deserialize(state.lockTimer);
 		engine.#resetCounter = state.resetCounter;
 		engine.#gameOver = state.gameOver;
+		engine.#garbageRng = new RNG(state.garbageRngState);
+		engine.#garbageQueue = state.garbageQueue;
+		engine.#attack = state.attack;
 
 		return engine;
+	}
+
+	queueGarbage(lines: number) {
+		this.#garbageQueue.push(lines);
 	}
 
 	queueInput(input: Input) {
@@ -238,6 +258,8 @@ export class Engine {
 	}
 
 	update() {
+		this.#attack = 0;
+
 		if (this.#gameOver) {
 			return;
 		}
@@ -367,6 +389,14 @@ export class Engine {
 
 	#lockGhost() {
 		this.#pile.addPiece(this.#ghostPiece);
+		this.#attack = this.#pile.lastLinesCleared;
+		for (const lines of this.#garbageQueue) {
+			this.#pile.addGarbage({
+				height: lines,
+				column: this.#garbageRng.nextInt(0, 10),
+			});
+		}
+		this.#garbageQueue.length = 0;
 		this.#spawn();
 		this.#holdLocked = false;
 	}
@@ -463,6 +493,14 @@ export class Engine {
 
 	get next(): Piece[] {
 		return this.#generator.next;
+	}
+
+	get garbageQueue(): number[] {
+		return this.#garbageQueue;
+	}
+
+	get attack(): number {
+		return this.#attack;
 	}
 }
 
@@ -627,10 +665,14 @@ function kickOffset(type: PieceType, rotation: Rotation, n: number): Coords {
 	return table[n]!;
 }
 
-type SerializedPile = Cell[][];
+type SerializedPile = {
+	rows: Cell[][],
+	lastLinesCleared: number,
+};
 
 class Pile {
 	#rows: Cell[][] = [];
+	#lastLinesCleared = 0;
 
 	constructor() {
 		for (let i = 0; i < PILE_HEIGHT; i++) {
@@ -640,12 +682,18 @@ class Pile {
 
 	static deserialize(state: SerializedPile): Pile {
 		const pile = new Pile();
-		pile.#rows = state;
+
+		pile.#rows = state.rows;
+		pile.#lastLinesCleared = state.lastLinesCleared;
+
 		return pile;
 	}
 
 	serialize(): SerializedPile {
-		return structuredClone(this.#rows);
+		return {
+			rows: structuredClone(this.#rows),
+			lastLinesCleared: this.#lastLinesCleared,
+		}
 	}
 
 	#emptyRow() {
@@ -676,6 +724,8 @@ class Pile {
 			this.#rows[y]![x] = piece.type;
 		}
 
+		this.#lastLinesCleared = 0;
+
 		for (let i = PILE_HEIGHT - 1; i >= 0; i--) {
 			let full = true;
 			for (let j = 0; j < PILE_WIDTH; j++) {
@@ -686,6 +736,7 @@ class Pile {
 			if (full) {
 				this.#rows.splice(i, 1);
 				this.#rows.push(this.#emptyRow());
+				this.#lastLinesCleared++;
 			}
 		}
 	}
@@ -700,8 +751,24 @@ class Pile {
 		}
 	}
 
+	addGarbage(garbage: Garbage) {
+		for (let i = 0; i < garbage.height; i++) {
+			this.#rows.pop();
+
+			const row: Cell[] = [];
+			for (let j = 0; j < PILE_WIDTH; j++) {
+				row.push(j === garbage.column ? null : "g");
+			}
+			this.#rows.unshift(row);
+		}
+	}
+
 	get rows(): readonly (readonly Cell[])[] {
 		return this.#rows;
+	}
+
+	get lastLinesCleared(): number {
+		return this.#lastLinesCleared;
 	}
 }
 
