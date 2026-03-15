@@ -74,8 +74,8 @@ async fn main() {
             }
         }
 
-        if let Some(ref active_piece) = engine.active_piece {
-            for (x, y) in active_piece.ghost_blocks {
+        if let Some(ref ghost_piece) = engine.ghost_piece {
+            for (x, y) in ghost_piece.blocks {
                 let x = offset_x + x as f32 * BLOCK_SIZE;
                 let y = offset_y + (GRID_HEIGHT - y - 1) as f32 * BLOCK_SIZE;
 
@@ -92,7 +92,9 @@ async fn main() {
                     },
                 );
             }
+        }
 
+        if let Some(ref active_piece) = engine.active_piece {
             for (x, y) in active_piece.blocks {
                 let x = offset_x + x as f32 * BLOCK_SIZE;
                 let y = offset_y + (GRID_HEIGHT - y - 1) as f32 * BLOCK_SIZE;
@@ -102,7 +104,7 @@ async fn main() {
                     y,
                     BLOCK_SIZE,
                     BLOCK_SIZE,
-                    piece_color(engine.active_piece.as_ref().unwrap().kind),
+                    piece_color(active_piece.kind),
                 );
             }
         }

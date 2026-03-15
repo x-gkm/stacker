@@ -200,6 +200,7 @@ impl Timer {
 pub struct Engine {
     pub pile: Pile,
     pub active_piece: Option<Piece>,
+    pub ghost_piece: Option<Piece>,
     pub hold: HoldPiece,
     pub next_queue: NextQueue,
     movement: MovementState,
@@ -219,6 +220,7 @@ impl Engine {
         Engine {
             pile: Pile::new(),
             active_piece: None,
+            ghost_piece: None,
             movement: MovementState {
                 das: None,
                 move_left: false,
@@ -266,16 +268,16 @@ impl Engine {
             }
         }
 
-        active_piece.update_ghost(&self.pile);
+        self.ghost_piece = Some(self.pile.calculate_ghost(active_piece));
     }
 
     fn harddrop(&mut self) {
-        let Some(ref active_piece) = self.active_piece else {
+        let Some(ref ghost_piece) = self.ghost_piece else {
             return;
         };
 
-        for (x, y) in active_piece.ghost_blocks {
-            self.pile.0[y as usize][x as usize] = Some(active_piece.kind)
+        for (x, y) in ghost_piece.blocks {
+            self.pile.0[y as usize][x as usize] = Some(ghost_piece.kind)
         }
         let line_clear = self.pile.any_lines_to_clear();
 
@@ -285,6 +287,7 @@ impl Engine {
 
         self.fall_timer.stop();
         self.active_piece = None;
+        self.ghost_piece = None;
         if line_clear {
             self.line_clear_timer.set(self.config.clear_delay);
             self.spawn_timer.set(self.config.clear_delay);
@@ -307,7 +310,7 @@ impl Engine {
         if !self.pile.check_collision(&branched_piece.blocks) {
             *active_piece = branched_piece;
         }
-        active_piece.update_ghost(&self.pile);
+        self.ghost_piece = Some(self.pile.calculate_ghost(active_piece))
     }
 
     fn fall(&mut self) {
@@ -334,7 +337,7 @@ impl Engine {
 
     fn spawn(&mut self, piece: PieceKind) {
         self.active_piece = Some(Piece::spawn(piece));
-        self.active_piece.as_mut().unwrap().update_ghost(&self.pile);
+        self.ghost_piece = Some(self.pile.calculate_ghost(self.active_piece.as_ref().unwrap()));
         self.handle_fall();
     }
 
@@ -499,6 +502,21 @@ impl Pile {
 
         false
     }
+
+    fn calculate_ghost(&self, piece: &Piece) -> Piece {
+        let mut ghost_piece = piece.clone();
+        loop {
+            let mut branched_piece = ghost_piece.clone();
+            branched_piece.y -= 1;
+            branched_piece.update_blocks();
+            if !self.check_collision(&branched_piece.blocks) {
+                ghost_piece = branched_piece;
+            } else {
+                break;
+            }
+        }
+        ghost_piece
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -508,8 +526,6 @@ pub struct Piece {
     x: i32,
     y: i32,
     pub blocks: [(i32, i32); 4],
-    ghost_y: i32,
-    pub ghost_blocks: [(i32, i32); 4],
 }
 
 impl Piece {
@@ -524,8 +540,6 @@ impl Piece {
             x,
             y,
             blocks: [(0, 0); 4],
-            ghost_y: 0,
-            ghost_blocks: [(0, 0); 4],
         };
 
         result.update_blocks();
@@ -538,22 +552,6 @@ impl Piece {
             .kind
             .blocks(self.orientation)
             .map(|(bx, by)| (self.x + bx, self.y + by));
-    }
-
-    fn update_ghost(&mut self, pile: &Pile) {
-        let mut ghost_piece = self.clone();
-        loop {
-            let mut branched_piece = ghost_piece.clone();
-            branched_piece.y -= 1;
-            branched_piece.update_blocks();
-            if !pile.check_collision(&branched_piece.blocks) {
-                ghost_piece = branched_piece;
-            } else {
-                break;
-            }
-        }
-        self.ghost_y = ghost_piece.y;
-        self.ghost_blocks = ghost_piece.blocks;
     }
 }
 
