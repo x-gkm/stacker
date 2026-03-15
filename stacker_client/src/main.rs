@@ -32,7 +32,7 @@ async fn main() {
         let offset_x = (screen_width() - PILE_WIDTH as f32 * BLOCK_SIZE) / 2.;
         let offset_y = (screen_height() - GRID_HEIGHT as f32 * BLOCK_SIZE) / 2.;
 
-        for (y, row) in engine.pile.0.iter().enumerate() {
+        for (y, row) in engine.pile().iter().enumerate() {
             for (x, &block) in row.iter().enumerate() {
                 let block_x = offset_x + x as f32 * BLOCK_SIZE;
                 let block_y = offset_y + (GRID_HEIGHT - y as i32 - 1) as f32 * BLOCK_SIZE;
@@ -45,7 +45,7 @@ async fn main() {
             }
         }
 
-        if let HoldPiece::Locked(piece) | HoldPiece::Unlocked(piece) = engine.hold {
+        if let HoldPiece::Locked(piece) | HoldPiece::Unlocked(piece) = engine.hold() {
             for (x, y) in piece.blocks(Orientation::N) {
                 let x = offset_x + (x - 4) as f32 * BLOCK_SIZE;
                 let y = offset_y + (GRID_HEIGHT - y - 4 as i32 * 3 - 7) as f32 * BLOCK_SIZE;
@@ -55,26 +55,26 @@ async fn main() {
                     y,
                     BLOCK_SIZE,
                     BLOCK_SIZE,
-                    if let HoldPiece::Locked(..) = engine.hold {
+                    if let HoldPiece::Locked(..) = engine.hold() {
                         GRAY
                     } else {
-                        piece_color(piece)
+                        piece_color(*piece)
                     },
                 );
             }
         }
 
-        for (index, piece) in engine.next_queue.pieces.iter().take(5).enumerate() {
+        for (index, piece) in engine.next_queue().enumerate() {
             for (x, y) in piece.blocks(Orientation::N) {
                 let x = offset_x + (x + 12) as f32 * BLOCK_SIZE;
                 let y =
                     offset_y + (GRID_HEIGHT - y - (4 - index) as i32 * 3 - 7) as f32 * BLOCK_SIZE;
 
-                draw_rectangle(x, y, BLOCK_SIZE, BLOCK_SIZE, piece_color(*piece));
+                draw_rectangle(x, y, BLOCK_SIZE, BLOCK_SIZE, piece_color(piece));
             }
         }
 
-        if let Some(ref ghost_piece) = engine.ghost_piece {
+        if let Some(ghost_piece) = engine.ghost_piece() {
             for (x, y) in ghost_piece.blocks {
                 let x = offset_x + x as f32 * BLOCK_SIZE;
                 let y = offset_y + (GRID_HEIGHT - y - 1) as f32 * BLOCK_SIZE;
@@ -94,7 +94,7 @@ async fn main() {
             }
         }
 
-        if let Some(ref active_piece) = engine.active_piece {
+        if let Some(active_piece) = engine.active_piece() {
             for (x, y) in active_piece.blocks {
                 let x = offset_x + x as f32 * BLOCK_SIZE;
                 let y = offset_y + (GRID_HEIGHT - y - 1) as f32 * BLOCK_SIZE;

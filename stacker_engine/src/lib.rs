@@ -6,7 +6,7 @@ use rand::{SeedableRng, seq::SliceRandom};
 use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
 
-const PILE_HEIGHT: usize = 40;
+pub const PILE_HEIGHT: usize = 40;
 pub const PILE_WIDTH: usize = 10;
 pub const GRID_HEIGHT: i32 = 20;
 
@@ -72,7 +72,7 @@ impl PieceKind {
     }
 }
 
-type Cell = Option<PieceKind>;
+pub type Cell = Option<PieceKind>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Orientation {
@@ -127,8 +127,8 @@ struct MovementState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NextQueue {
-    pub pieces: Deque<PieceKind, 13>,
+struct NextQueue {
+    pieces: Deque<PieceKind, 13>,
     rng: ChaChaRng,
 }
 
@@ -198,11 +198,11 @@ impl Timer {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Engine {
-    pub pile: Pile,
-    pub active_piece: Option<Piece>,
-    pub ghost_piece: Option<Piece>,
-    pub hold: HoldPiece,
-    pub next_queue: NextQueue,
+    pile: Pile,
+    active_piece: Option<Piece>,
+    ghost_piece: Option<Piece>,
+    hold: HoldPiece,
+    next_queue: NextQueue,
     movement: MovementState,
     config: GameConfig,
     spawn_timer: Timer,
@@ -436,10 +436,30 @@ impl Engine {
             self.das_timer.set(self.config.arr);
         }
     }
+
+    pub fn active_piece(&self) -> &Option<Piece> {
+        &self.active_piece
+    }
+
+    pub fn ghost_piece(&self) -> &Option<Piece> {
+        &self.ghost_piece
+    }
+
+    pub fn hold(&self) -> &HoldPiece {
+        &self.hold
+    }
+
+    pub fn next_queue(&self) -> impl Iterator<Item = PieceKind> {
+        self.next_queue.pieces.iter().take(5).copied()
+    }
+
+    pub fn pile(&self) -> &[[Cell; PILE_WIDTH]; PILE_HEIGHT] {
+        &self.pile.0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Pile(#[serde(with = "serde_big_array::BigArray")] pub [[Cell; PILE_WIDTH]; PILE_HEIGHT]);
+struct Pile(#[serde(with = "serde_big_array::BigArray")] [[Cell; PILE_WIDTH]; PILE_HEIGHT]);
 
 impl Pile {
     fn new() -> Pile {
@@ -523,9 +543,9 @@ impl Pile {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Piece {
     pub kind: PieceKind,
-    orientation: Orientation,
-    x: i32,
-    y: i32,
+    pub orientation: Orientation,
+    pub x: i32,
+    pub y: i32,
     pub blocks: [(i32, i32); 4],
 }
 
