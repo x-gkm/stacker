@@ -39,16 +39,29 @@ export class Piece {
 		type: PieceType,
 		x: number = 0,
 		y: number = 0,
-		rotation: Rotation = 0,
+		direction: Rotation = 0,
 	) {
 		this.#type = type;
 		this.#coords = [x, y];
-		this.#direction = rotation;
+		this.#direction = direction;
 		this.#blocks = NORTH_PIECES[type];
-		for (let i = 0; i < rotation; i++) {
+		for (let i = 0; i < direction; i++) {
 			this.#blocks = this.#blocks.map(([x, y]) => [y, -x]);
 		}
 		this.#blocks = this.#blocks.map(([bx, by]) => [bx + x, by + y]);
+	}
+
+	static deserialize(state: SerializedPiece): Piece {
+		return new Piece(state.type, state.x, state.y, state.direction);
+	}
+
+	serialize(): SerializedPiece {
+		return {
+			type: this.#type,
+			x: this.#coords[0],
+			y: this.#coords[1],
+			direction: this.#direction,
+		};
 	}
 
 	changedBy(
@@ -99,19 +112,6 @@ export class Piece {
 		return true;
 	}
 
-	serialize(): SerializedPiece {
-		return {
-			type: this.#type,
-			x: this.#coords[0],
-			y: this.#coords[1],
-			direction: this.#direction,
-		};
-	}
-
-	static deserialize(state: SerializedPiece): Piece {
-		return new Piece(state.type, state.x, state.y, state.direction);
-	}
-
 	get type(): PieceType {
 		return this.#type;
 	}
@@ -123,22 +123,21 @@ export class Piece {
 
 export type SerializedEngine = {
 	frameInputs: Input[];
-	pile: Cell[][];
-	nexts: PieceType[];
-	generatorState: number[];
+	pile: SerializedPile;
+	generator: SerializedPieceGenerator;
 	activePiece: SerializedPiece;
 	lowestY: number;
 	ghostPiece: SerializedPiece;
 	holdPiece: PieceType | null;
 	holdLocked: boolean;
-	gravityTime: number;
-	softdropTime: number;
+	gravityTimer: SerializedTimer;
+	softdropTimer: SerializedTimer;
 	moveLeft: boolean;
 	moveRight: boolean;
 	dasDirection: "left" | "right" | null;
-	dasTime: number;
-	arrTime: number;
-	lockTime: number;
+	dasTimer: SerializedTimer;
+	arrTimer: SerializedTimer;
+	lockTimer: SerializedTimer;
 	resetCounter: number;
 	gameOver: boolean;
 };
@@ -185,22 +184,21 @@ export class Engine {
 	serialize(): SerializedEngine {
 		return {
 			frameInputs: this.#frameInputs.slice(),
-			pile: structuredClone(this.#pile.rows),
-			nexts: this.#generator.pieces.map(piece => piece.type),
-			generatorState: this.#generator.getState().slice(),
+			pile: this.#pile.serialize(),
+			generator: this.#generator.serialize(),
 			activePiece: this.#activePiece.serialize(),
 			lowestY: this.#lowestY,
 			ghostPiece: this.#ghostPiece.serialize(),
 			holdPiece: this.#holdPiece?.type ?? null,
 			holdLocked: this.#holdLocked,
-			gravityTime: this.#gravityTimer.remaining,
-			softdropTime: this.#softdropTimer.remaining,
+			gravityTimer: this.#gravityTimer.serialize(),
+			softdropTimer: this.#softdropTimer.serialize(),
 			moveLeft: this.#moveLeft,
 			moveRight: this.#moveRight,
 			dasDirection: this.#dasDirection,
-			dasTime: this.#dasTimer.remaining,
-			arrTime: this.#arrTimer.remaining,
-			lockTime: this.#lockTimer.remaining,
+			dasTimer: this.#dasTimer.serialize(),
+			arrTimer: this.#arrTimer.serialize(),
+			lockTimer: this.#lockTimer.serialize(),
 			resetCounter: this.#resetCounter,
 			gameOver: this.#gameOver,
 		};
@@ -210,24 +208,21 @@ export class Engine {
 		const engine = new Engine(0);
 
 		engine.#frameInputs = state.frameInputs;
-		engine.#pile.rows = state.pile;
-		engine.#generator = PieceGenerator.deserialize(
-			state.nexts,
-			state.generatorState,
-		);
+		engine.#pile = Pile.deserialize(state.pile);
+		engine.#generator = PieceGenerator.deserialize(state.generator);
 		engine.#activePiece = Piece.deserialize(state.activePiece);
 		engine.#lowestY = state.lowestY;
 		engine.#ghostPiece = Piece.deserialize(state.ghostPiece);
 		engine.#holdPiece = state.holdPiece ? new Piece(state.holdPiece) : null;
 		engine.#holdLocked = state.holdLocked;
-		engine.#gravityTimer.remaining = state.gravityTime;
-		engine.#softdropTimer.remaining = state.softdropTime;
+		engine.#gravityTimer = Timer.deserialize(state.gravityTimer);
+		engine.#softdropTimer = Timer.deserialize(state.softdropTimer);
 		engine.#moveLeft = state.moveLeft;
 		engine.#moveRight = state.moveRight;
 		engine.#dasDirection = state.dasDirection;
-		engine.#dasTimer.remaining = state.dasTime;
-		engine.#arrTimer.remaining = state.arrTime;
-		engine.#lockTimer.remaining = state.lockTime;
+		engine.#dasTimer = Timer.deserialize(state.dasTimer);
+		engine.#arrTimer = Timer.deserialize(state.arrTimer);
+		engine.#lockTimer = Timer.deserialize(state.lockTimer);
 		engine.#resetCounter = state.resetCounter;
 		engine.#gameOver = state.gameOver;
 
@@ -467,7 +462,7 @@ export class Engine {
 	}
 
 	get next(): Piece[] {
-		return this.#generator.pieces.slice(0, 5);
+		return this.#generator.next;
 	}
 }
 
@@ -632,13 +627,25 @@ function kickOffset(type: PieceType, rotation: Rotation, n: number): Coords {
 	return table[n]!;
 }
 
+type SerializedPile = Cell[][];
+
 class Pile {
-	rows: Cell[][] = [];
+	#rows: Cell[][] = [];
 
 	constructor() {
 		for (let i = 0; i < PILE_HEIGHT; i++) {
-			this.rows.push(this.#emptyRow());
+			this.#rows.push(this.#emptyRow());
 		}
+	}
+
+	static deserialize(state: SerializedPile): Pile {
+		const pile = new Pile();
+		pile.#rows = state;
+		return pile;
+	}
+
+	serialize(): SerializedPile {
+		return structuredClone(this.#rows);
 	}
 
 	#emptyRow() {
@@ -656,7 +663,7 @@ class Pile {
 				x >= PILE_WIDTH ||
 				y < 0 ||
 				y >= PILE_HEIGHT ||
-				this.rows[y]?.[x] != null
+				this.#rows[y]?.[x] != null
 			) {
 				return true;
 			}
@@ -666,19 +673,19 @@ class Pile {
 
 	addPiece(piece: Piece) {
 		for (const [x, y] of piece.blocks) {
-			this.rows[y]![x] = piece.type;
+			this.#rows[y]![x] = piece.type;
 		}
 
 		for (let i = PILE_HEIGHT - 1; i >= 0; i--) {
 			let full = true;
 			for (let j = 0; j < PILE_WIDTH; j++) {
-				if (this.rows[i]?.[j] === null) {
+				if (this.#rows[i]?.[j] === null) {
 					full = false;
 				}
 			}
 			if (full) {
-				this.rows.splice(i, 1);
-				this.rows.push(this.#emptyRow());
+				this.#rows.splice(i, 1);
+				this.#rows.push(this.#emptyRow());
 			}
 		}
 	}
@@ -692,10 +699,19 @@ class Pile {
 			piece = branched;
 		}
 	}
+
+	get rows(): readonly (readonly Cell[])[] {
+		return this.#rows;
+	}
 }
 
+type SerializedPieceGenerator = {
+	pieces: PieceType[];
+	rngState: number[];
+};
+
 class PieceGenerator {
-	pieces: Piece[] = [];
+	#pieces: Piece[] = [];
 	#rng: RNG;
 
 	constructor(seed: number) {
@@ -703,11 +719,18 @@ class PieceGenerator {
 		this.#fill();
 	}
 
-	static deserialize(nexts: PieceType[], state: number[]): PieceGenerator {
+	static deserialize(state: SerializedPieceGenerator): PieceGenerator {
 		const generator = new PieceGenerator(0);
-		generator.#rng = new RNG(state);
-		generator.pieces = nexts.map(type => new Piece(type));
+		generator.#pieces = state.pieces.map(type => new Piece(type));
+		generator.#rng = new RNG(state.rngState);
 		return generator;
+	}
+
+	serialize(): SerializedPieceGenerator {
+		return {
+			pieces: this.#pieces.map(({ type }) => type),
+			rngState: this.#rng.getState().slice(),
+		};
 	}
 
 	#fill() {
@@ -717,47 +740,68 @@ class PieceGenerator {
 		while (bag.length > 0) {
 			const index = this.#rng.nextInt(0, bag.length);
 			const choosen = bag.splice(index, 1)[0]!;
-			this.pieces.push(choosen);
+			this.#pieces.push(choosen);
 		}
 	}
 
 	pull(): Piece {
-		if (this.pieces.length < 5) {
+		if (this.#pieces.length < 5) {
 			this.#fill();
 		}
 
-		return this.pieces.shift()!;
+		return this.#pieces.shift()!;
 	}
 
-	getState(): readonly number[] {
-		return this.#rng.getState();
+	get next(): Piece[] {
+		return this.#pieces.slice(0, 5);
 	}
 }
 
+type SerializedTimer = {
+	timeout: number;
+	remaining: number;
+};
+
 class Timer {
 	#timeout: number;
-	remaining: number = 0;
+	#remaining: number = 0;
 
 	constructor(timeout: number) {
 		this.#timeout = timeout;
 	}
 
+	static deserialize(state: SerializedTimer): Timer {
+		const timer = new Timer(0);
+
+		timer.#timeout = state.timeout;
+		timer.#remaining = state.remaining;
+
+		return timer;
+	}
+
+	serialize(): SerializedTimer {
+		return {
+			timeout: this.#timeout,
+			remaining: this.#remaining,
+		};
+	}
+
 	tick() {
-		if (this.remaining <= 0) {
+		if (this.#remaining <= 0) {
 			return false;
 		}
-		this.remaining--;
-		if (this.remaining <= 0) {
+		this.#remaining--;
+		if (this.#remaining <= 0) {
 			return true;
 		}
 		return false;
 	}
 
 	restart() {
-		this.remaining = this.#timeout;
+		this.#remaining = this.#timeout;
 	}
 
 	stop() {
-		this.remaining = 0;
+		this.#remaining = 0;
 	}
 }
