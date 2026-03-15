@@ -4,11 +4,13 @@ use heapless::Deque;
 
 use rand::{SeedableRng, seq::SliceRandom};
 use rand_chacha::ChaChaRng;
+use serde::{Deserialize, Serialize};
 
 const PILE_HEIGHT: usize = 40;
 pub const PILE_WIDTH: usize = 10;
 pub const GRID_HEIGHT: i32 = 20;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct GameConfig {
     das: u32,
     arr: u32,
@@ -18,7 +20,7 @@ struct GameConfig {
     clear_delay: u32,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PieceKind {
     I,
     O,
@@ -29,7 +31,9 @@ pub enum PieceKind {
     S,
 }
 
-#[derive(Debug, Copy, Clone)]
+type Cell = Option<PieceKind>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Orientation {
     N,
     E,
@@ -51,7 +55,7 @@ impl Orientation {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Action {
     Flip,
     Hold,
@@ -61,18 +65,19 @@ pub enum Action {
     Softdrop,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Input {
     Begin(Action),
     End(Action),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
     Left,
     Right,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct MovementState {
     das: Option<Direction>,
     move_left: bool,
@@ -80,6 +85,7 @@ struct MovementState {
     soft_dropping: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NextQueue {
     pub pieces: Deque<PieceKind, 13>,
     rng: ChaChaRng,
@@ -111,12 +117,14 @@ impl NextQueue {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HoldPiece {
     Empty,
     Locked(PieceKind),
     Unlocked(PieceKind),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Timer(u32);
 
 impl Timer {
@@ -147,8 +155,10 @@ impl Timer {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Engine {
-    pub pile: [[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT],
+    #[serde(with = "serde_big_array::BigArray")]
+    pub pile: [[Cell; PILE_WIDTH]; PILE_HEIGHT],
     pub active_piece: Option<ActivePiece>,
     pub hold: HoldPiece,
     pub next_queue: NextQueue,
@@ -384,7 +394,7 @@ impl Engine {
     }
 }
 
-fn any_lines_to_clear(pile: &[[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT]) -> bool {
+fn any_lines_to_clear(pile: &[[Cell; PILE_WIDTH]; PILE_HEIGHT]) -> bool {
     for row in pile {
         let mut full = true;
         for cell in row {
@@ -402,7 +412,7 @@ fn any_lines_to_clear(pile: &[[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT]) -> 
     false
 }
 
-fn line_clear(pile: &mut [[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT]) {
+fn line_clear(pile: &mut [[Cell; PILE_WIDTH]; PILE_HEIGHT]) {
     for row in (0..PILE_HEIGHT).rev() {
         let mut full = true;
         for cell in &pile[row] {
@@ -428,7 +438,7 @@ fn line_clear(pile: &mut [[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT]) {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActivePiece {
     pub kind: PieceKind,
     orientation: Orientation,
@@ -539,7 +549,7 @@ impl ActivePiece {
             .map(|(bx, by)| (self.x + bx, self.y + by));
     }
 
-    fn update_ghost(&mut self, pile: &[[Option<PieceKind>; 10]; 40]) {
+    fn update_ghost(&mut self, pile: &[[Cell; 10]; 40]) {
         let mut ghost_piece = self.clone();
         loop {
             let mut branched_piece = ghost_piece.clone();
@@ -557,7 +567,7 @@ impl ActivePiece {
 }
 
 fn check_collision(
-    pile: &[[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT],
+    pile: &[[Cell; PILE_WIDTH]; PILE_HEIGHT],
     blocks: &[(i32, i32)],
 ) -> bool {
     for &(x, y) in blocks {
