@@ -1,5 +1,8 @@
 import { uniformInt } from "pure-rand/distribution/uniformInt";
-import { xoroshiro128plus, xoroshiro128plusFromState } from "pure-rand/generator/xoroshiro128plus";
+import {
+	xoroshiro128plus,
+	xoroshiro128plusFromState,
+} from "pure-rand/generator/xoroshiro128plus";
 import type { JumpableRandomGenerator } from "pure-rand/types/JumpableRandomGenerator";
 
 export default class RNG {
@@ -18,6 +21,6 @@ export default class RNG {
 	}
 
 	getState(): readonly number[] {
-		return this.#generator.getState()
+		return this.#generator.getState();
 	}
 }

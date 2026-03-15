@@ -46,7 +46,10 @@ class Client {
 				continue;
 			}
 
-			this.#send("addOpponent", { id: client.#id, state: client.#engine.serialize() });
+			this.#send("addOpponent", {
+				id: client.#id,
+				state: client.#engine.serialize(),
+			});
 		}
 	}
 

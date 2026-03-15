@@ -174,7 +174,7 @@ export class Engine {
 
 		this.#gravityTimer = new Timer(60);
 		this.#gravityTimer.restart();
-this.#softdropTimer = new Timer(3);
+		this.#softdropTimer = new Timer(3);
 		this.#dasTimer = new Timer(6);
 		this.#arrTimer = new Timer(1);
 		this.#lockTimer = new Timer(30);
@@ -211,14 +211,17 @@ this.#softdropTimer = new Timer(3);
 
 		engine.#frameInputs = state.frameInputs;
 		engine.#pile.rows = state.pile;
-		engine.#generator = PieceGenerator.deserialize(state.nexts, state.generatorState);
+		engine.#generator = PieceGenerator.deserialize(
+			state.nexts,
+			state.generatorState,
+		);
 		engine.#activePiece = Piece.deserialize(state.activePiece);
 		engine.#lowestY = state.lowestY;
 		engine.#ghostPiece = Piece.deserialize(state.ghostPiece);
 		engine.#holdPiece = state.holdPiece ? new Piece(state.holdPiece) : null;
 		engine.#holdLocked = state.holdLocked;
 		engine.#gravityTimer.remaining = state.gravityTime;
-		engine.#softdropTimer.remaining =state.softdropTime;
+		engine.#softdropTimer.remaining = state.softdropTime;
 		engine.#moveLeft = state.moveLeft;
 		engine.#moveRight = state.moveRight;
 		engine.#dasDirection = state.dasDirection;
@@ -704,7 +707,7 @@ class PieceGenerator {
 		const generator = new PieceGenerator(0);
 		generator.#rng = new RNG(state);
 		generator.pieces = nexts.map(type => new Piece(type));
-		return generator
+		return generator;
 	}
 
 	#fill() {
