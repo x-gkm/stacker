@@ -19,7 +19,7 @@ struct GameConfig {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Piece {
+pub enum PieceKind {
     I,
     O,
     T,
@@ -81,7 +81,7 @@ struct MovementState {
 }
 
 pub struct NextQueue {
-    pub pieces: Deque<Piece, 13>,
+    pub pieces: Deque<PieceKind, 13>,
     rng: ChaChaRng,
 }
 
@@ -96,7 +96,7 @@ impl NextQueue {
 
         result
     }
-    fn pull(&mut self) -> Piece {
+    fn pull(&mut self) -> PieceKind {
         let result = self.pieces.pop_front().unwrap();
         if self.pieces.len() < 5 {
             self.add_bag();
@@ -104,7 +104,7 @@ impl NextQueue {
         result
     }
     fn add_bag(&mut self) {
-        use Piece::*;
+        use PieceKind::*;
         let mut bag = [I, O, T, L, Z, J, S];
         bag.shuffle(&mut self.rng);
         self.pieces.extend(bag);
@@ -113,8 +113,8 @@ impl NextQueue {
 
 pub enum HoldPiece {
     Empty,
-    Locked(Piece),
-    Unlocked(Piece),
+    Locked(PieceKind),
+    Unlocked(PieceKind),
 }
 
 struct Timer(u32);
@@ -148,7 +148,7 @@ impl Timer {
 }
 
 pub struct Engine {
-    pub pile: [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT],
+    pub pile: [[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT],
     pub active_piece: Option<ActivePiece>,
     pub hold: HoldPiece,
     pub next_queue: NextQueue,
@@ -282,7 +282,7 @@ impl Engine {
         });
     }
 
-    fn spawn(&mut self, piece: Piece) {
+    fn spawn(&mut self, piece: PieceKind) {
         self.active_piece = Some(ActivePiece::spawn(piece));
         self.active_piece.as_mut().unwrap().update_ghost(&self.pile);
         self.handle_fall();
@@ -384,7 +384,7 @@ impl Engine {
     }
 }
 
-fn any_lines_to_clear(pile: &[[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT]) -> bool {
+fn any_lines_to_clear(pile: &[[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT]) -> bool {
     for row in pile {
         let mut full = true;
         for cell in row {
@@ -402,7 +402,7 @@ fn any_lines_to_clear(pile: &[[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT]) -> bool
     false
 }
 
-fn line_clear(pile: &mut [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT]) {
+fn line_clear(pile: &mut [[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT]) {
     for row in (0..PILE_HEIGHT).rev() {
         let mut full = true;
         for cell in &pile[row] {
@@ -430,7 +430,7 @@ fn line_clear(pile: &mut [[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT]) {
 
 #[derive(Debug, Clone)]
 pub struct ActivePiece {
-    pub kind: Piece,
+    pub kind: PieceKind,
     orientation: Orientation,
     x: i32,
     y: i32,
@@ -439,15 +439,15 @@ pub struct ActivePiece {
     pub ghost_blocks: [(i32, i32); 4],
 }
 
-fn kick_offset(piece: Piece, from: Orientation, to: Orientation, n: i32) -> (i32, i32) {
+fn kick_offset(piece: PieceKind, from: Orientation, to: Orientation, n: i32) -> (i32, i32) {
     let (x1, y1) = kick_offset_part(piece, from, n);
     let (x2, y2) = kick_offset_part(piece, to, n);
 
     (x1 - x2, y1 - y2)
 }
 
-fn kick_offset_part(piece: Piece, orientation: Orientation, n: i32) -> (i32, i32) {
-    if let Piece::O = piece {
+fn kick_offset_part(piece: PieceKind, orientation: Orientation, n: i32) -> (i32, i32) {
+    if let PieceKind::O = piece {
         return match orientation {
             Orientation::N => (0, 0),
             Orientation::E => (0, -1),
@@ -457,10 +457,10 @@ fn kick_offset_part(piece: Piece, orientation: Orientation, n: i32) -> (i32, i32
     }
 
     let offsets = match (piece, orientation) {
-        (Piece::I, Orientation::N) => [(0, 0), (-1, 0), (2, 0), (-1, 0), (2, 0)],
-        (Piece::I, Orientation::E) => [(-1, 0), (0, 0), (0, 0), (0, 1), (0, -2)],
-        (Piece::I, Orientation::S) => [(-1, 1), (1, 1), (-2, 1), (1, 0), (-2, 0)],
-        (Piece::I, Orientation::W) => [(0, 1), (0, 1), (0, 1), (0, -1), (0, 2)],
+        (PieceKind::I, Orientation::N) => [(0, 0), (-1, 0), (2, 0), (-1, 0), (2, 0)],
+        (PieceKind::I, Orientation::E) => [(-1, 0), (0, 0), (0, 0), (0, 1), (0, -2)],
+        (PieceKind::I, Orientation::S) => [(-1, 1), (1, 1), (-2, 1), (1, 0), (-2, 0)],
+        (PieceKind::I, Orientation::W) => [(0, 1), (0, 1), (0, 1), (0, -1), (0, 2)],
         (_, Orientation::N) => [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
         (_, Orientation::E) => [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
         (_, Orientation::S) => [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
@@ -470,49 +470,49 @@ fn kick_offset_part(piece: Piece, orientation: Orientation, n: i32) -> (i32, i32
     offsets[n as usize]
 }
 
-impl Piece {
+impl PieceKind {
     pub fn blocks(self, orientation: Orientation) -> [(i32, i32); 4] {
         match (self, orientation) {
-            (Piece::I, Orientation::N) => [(0, 0), (-1, 0), (1, 0), (2, 0)],
-            (Piece::I, Orientation::E) => [(0, 0), (0, -2), (0, -1), (0, 1)],
-            (Piece::I, Orientation::S) => [(0, 0), (-2, 0), (-1, 0), (1, 0)],
-            (Piece::I, Orientation::W) => [(0, 0), (0, -1), (0, 1), (0, 2)],
+            (PieceKind::I, Orientation::N) => [(0, 0), (-1, 0), (1, 0), (2, 0)],
+            (PieceKind::I, Orientation::E) => [(0, 0), (0, -2), (0, -1), (0, 1)],
+            (PieceKind::I, Orientation::S) => [(0, 0), (-2, 0), (-1, 0), (1, 0)],
+            (PieceKind::I, Orientation::W) => [(0, 0), (0, -1), (0, 1), (0, 2)],
 
-            (Piece::O, Orientation::N) => [(0, 0), (0, 1), (1, 1), (1, 0)],
-            (Piece::O, Orientation::E) => [(0, 0), (0, -1), (1, -1), (1, 0)],
-            (Piece::O, Orientation::S) => [(0, 0), (0, -1), (-1, -1), (-1, 0)],
-            (Piece::O, Orientation::W) => [(0, 0), (0, 1), (-1, 1), (-1, 0)],
+            (PieceKind::O, Orientation::N) => [(0, 0), (0, 1), (1, 1), (1, 0)],
+            (PieceKind::O, Orientation::E) => [(0, 0), (0, -1), (1, -1), (1, 0)],
+            (PieceKind::O, Orientation::S) => [(0, 0), (0, -1), (-1, -1), (-1, 0)],
+            (PieceKind::O, Orientation::W) => [(0, 0), (0, 1), (-1, 1), (-1, 0)],
 
-            (Piece::T, Orientation::N) => [(0, 0), (-1, 0), (0, 1), (1, 0)],
-            (Piece::T, Orientation::E) => [(0, 0), (0, 1), (1, 0), (0, -1)],
-            (Piece::T, Orientation::S) => [(0, 0), (-1, 0), (0, -1), (1, 0)],
-            (Piece::T, Orientation::W) => [(0, 0), (0, 1), (-1, 0), (0, -1)],
+            (PieceKind::T, Orientation::N) => [(0, 0), (-1, 0), (0, 1), (1, 0)],
+            (PieceKind::T, Orientation::E) => [(0, 0), (0, 1), (1, 0), (0, -1)],
+            (PieceKind::T, Orientation::S) => [(0, 0), (-1, 0), (0, -1), (1, 0)],
+            (PieceKind::T, Orientation::W) => [(0, 0), (0, 1), (-1, 0), (0, -1)],
 
-            (Piece::L, Orientation::N) => [(0, 0), (-1, 0), (1, 1), (1, 0)],
-            (Piece::L, Orientation::E) => [(0, 0), (0, 1), (1, -1), (0, -1)],
-            (Piece::L, Orientation::S) => [(0, 0), (-1, 0), (-1, -1), (1, 0)],
-            (Piece::L, Orientation::W) => [(0, 0), (0, 1), (-1, 1), (0, -1)],
+            (PieceKind::L, Orientation::N) => [(0, 0), (-1, 0), (1, 1), (1, 0)],
+            (PieceKind::L, Orientation::E) => [(0, 0), (0, 1), (1, -1), (0, -1)],
+            (PieceKind::L, Orientation::S) => [(0, 0), (-1, 0), (-1, -1), (1, 0)],
+            (PieceKind::L, Orientation::W) => [(0, 0), (0, 1), (-1, 1), (0, -1)],
 
-            (Piece::Z, Orientation::N) => [(0, 0), (-1, 1), (0, 1), (1, 0)],
-            (Piece::Z, Orientation::E) => [(0, 0), (1, 1), (1, 0), (0, -1)],
-            (Piece::Z, Orientation::S) => [(0, 0), (-1, 0), (0, -1), (1, -1)],
-            (Piece::Z, Orientation::W) => [(0, 0), (0, 1), (-1, 0), (-1, -1)],
+            (PieceKind::Z, Orientation::N) => [(0, 0), (-1, 1), (0, 1), (1, 0)],
+            (PieceKind::Z, Orientation::E) => [(0, 0), (1, 1), (1, 0), (0, -1)],
+            (PieceKind::Z, Orientation::S) => [(0, 0), (-1, 0), (0, -1), (1, -1)],
+            (PieceKind::Z, Orientation::W) => [(0, 0), (0, 1), (-1, 0), (-1, -1)],
 
-            (Piece::J, Orientation::N) => [(0, 0), (-1, 0), (-1, 1), (1, 0)],
-            (Piece::J, Orientation::E) => [(0, 0), (0, 1), (1, 1), (0, -1)],
-            (Piece::J, Orientation::S) => [(0, 0), (-1, 0), (1, -1), (1, 0)],
-            (Piece::J, Orientation::W) => [(0, 0), (0, 1), (-1, -1), (0, -1)],
+            (PieceKind::J, Orientation::N) => [(0, 0), (-1, 0), (-1, 1), (1, 0)],
+            (PieceKind::J, Orientation::E) => [(0, 0), (0, 1), (1, 1), (0, -1)],
+            (PieceKind::J, Orientation::S) => [(0, 0), (-1, 0), (1, -1), (1, 0)],
+            (PieceKind::J, Orientation::W) => [(0, 0), (0, 1), (-1, -1), (0, -1)],
 
-            (Piece::S, Orientation::N) => [(0, 0), (1, 1), (0, 1), (-1, 0)],
-            (Piece::S, Orientation::E) => [(0, 0), (1, -1), (1, 0), (0, 1)],
-            (Piece::S, Orientation::S) => [(0, 0), (1, 0), (0, -1), (-1, -1)],
-            (Piece::S, Orientation::W) => [(0, 0), (0, -1), (-1, 0), (-1, 1)],
+            (PieceKind::S, Orientation::N) => [(0, 0), (1, 1), (0, 1), (-1, 0)],
+            (PieceKind::S, Orientation::E) => [(0, 0), (1, -1), (1, 0), (0, 1)],
+            (PieceKind::S, Orientation::S) => [(0, 0), (1, 0), (0, -1), (-1, -1)],
+            (PieceKind::S, Orientation::W) => [(0, 0), (0, -1), (-1, 0), (-1, 1)],
         }
     }
 }
 
 impl ActivePiece {
-    fn spawn(kind: Piece) -> ActivePiece {
+    fn spawn(kind: PieceKind) -> ActivePiece {
         let x = PILE_WIDTH as i32 / 2 - 1;
         let y = GRID_HEIGHT + 2;
         let orientation = Orientation::N;
@@ -539,7 +539,7 @@ impl ActivePiece {
             .map(|(bx, by)| (self.x + bx, self.y + by));
     }
 
-    fn update_ghost(&mut self, pile: &[[Option<Piece>; 10]; 40]) {
+    fn update_ghost(&mut self, pile: &[[Option<PieceKind>; 10]; 40]) {
         let mut ghost_piece = self.clone();
         loop {
             let mut branched_piece = ghost_piece.clone();
@@ -557,7 +557,7 @@ impl ActivePiece {
 }
 
 fn check_collision(
-    pile: &[[Option<Piece>; PILE_WIDTH]; PILE_HEIGHT],
+    pile: &[[Option<PieceKind>; PILE_WIDTH]; PILE_HEIGHT],
     blocks: &[(i32, i32)],
 ) -> bool {
     for &(x, y) in blocks {

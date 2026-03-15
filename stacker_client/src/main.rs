@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use macroquad::prelude::*;
 use stacker_engine::{
-    Action, Direction, Engine, GRID_HEIGHT, HoldPiece, Input, Orientation, PILE_WIDTH, Piece,
+    Action, Direction, Engine, GRID_HEIGHT, HoldPiece, Input, Orientation, PILE_WIDTH, PieceKind,
 };
 
 const BLOCK_SIZE: f32 = 25.;
@@ -135,14 +135,14 @@ fn handle_input(result: &mut Vec<Input>) {
     }
 }
 
-fn piece_color(piece: Piece) -> Color {
+fn piece_color(piece: PieceKind) -> Color {
     match piece {
-        Piece::I => SKYBLUE,
-        Piece::O => YELLOW,
-        Piece::T => PURPLE,
-        Piece::L => ORANGE,
-        Piece::Z => RED,
-        Piece::J => BLUE,
-        Piece::S => GREEN,
+        PieceKind::I => SKYBLUE,
+        PieceKind::O => YELLOW,
+        PieceKind::T => PURPLE,
+        PieceKind::L => ORANGE,
+        PieceKind::Z => RED,
+        PieceKind::J => BLUE,
+        PieceKind::S => GREEN,
     }
 }
