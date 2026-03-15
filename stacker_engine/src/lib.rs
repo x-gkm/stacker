@@ -326,8 +326,7 @@ impl Engine {
         }
     }
 
-    fn handle_fall(&mut self) {
-        self.fall();
+    fn set_fall_timer(&mut self) {
         self.fall_timer.set(if self.movement.soft_dropping {
             self.config.softdrop
         } else {
@@ -338,7 +337,8 @@ impl Engine {
     fn spawn(&mut self, piece: PieceKind) {
         self.active_piece = Some(Piece::spawn(piece));
         self.ghost_piece = Some(self.pile.calculate_ghost(self.active_piece.as_ref().unwrap()));
-        self.handle_fall();
+        self.fall();
+        self.set_fall_timer();
     }
 
     pub fn update(&mut self, frame_inputs: &[Input]) {
@@ -428,7 +428,8 @@ impl Engine {
             self.spawn(piece);
         }
         if self.fall_timer.tick() {
-            self.handle_fall();
+            self.fall();
+            self.set_fall_timer();
         }
         if self.das_timer.tick() {
             self.do_move(self.movement.das.unwrap());
