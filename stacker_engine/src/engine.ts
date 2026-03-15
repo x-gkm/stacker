@@ -172,34 +172,12 @@ export class Engine {
 		);
 		this.#ghostPiece = this.#pile.calculateGhost(this.#activePiece);
 
-		this.#gravityTimer = new Timer(() => {
-			this.#fall();
-			this.#gravityTimer.restart();
-		}, 60);
-
-		this.#softdropTimer = new Timer(() => {
-			this.#fall();
-			this.#softdropTimer.restart();
-		}, 3);
-
+		this.#gravityTimer = new Timer(60);
 		this.#gravityTimer.restart();
-
-		this.#dasTimer = new Timer(() => {
-			this.#arrTimer.restart();
-		}, 6);
-
-		this.#arrTimer = new Timer(() => {
-			if (this.#dasDirection === null) {
-				return;
-			}
-
-			this.#move(this.#dasDirection);
-			this.#arrTimer.restart();
-		}, 1);
-
-		this.#lockTimer = new Timer(() => {
-			this.#tryLock();
-		}, 30);
+this.#softdropTimer = new Timer(3);
+		this.#dasTimer = new Timer(6);
+		this.#arrTimer = new Timer(1);
+		this.#lockTimer = new Timer(30);
 
 		this.#resetCounter = 0;
 	}
@@ -266,11 +244,31 @@ export class Engine {
 			return;
 		}
 
-		this.#gravityTimer.tick();
-		this.#softdropTimer.tick();
-		this.#dasTimer.tick();
-		this.#arrTimer.tick();
-		this.#lockTimer.tick();
+		if (this.#gravityTimer.tick()) {
+			this.#fall();
+			this.#gravityTimer.restart();
+		}
+
+		if (this.#softdropTimer.tick()) {
+			this.#fall();
+			this.#softdropTimer.restart();
+		}
+
+		if (this.#dasTimer.tick()) {
+			this.#arrTimer.restart();
+		}
+
+		if (this.#arrTimer.tick()) {
+			if (this.#dasDirection !== null) {
+				this.#move(this.#dasDirection);
+				this.#arrTimer.restart();
+			}
+		}
+
+		if (this.#lockTimer.tick()) {
+			this.#tryLock();
+		}
+
 		for (const input of this.#frameInputs) {
 			this.#handleInput(input);
 		}
@@ -734,23 +732,22 @@ class PieceGenerator {
 }
 
 class Timer {
-	#fn: () => void;
 	#timeout: number;
 	remaining: number = 0;
 
-	constructor(fn: () => void, timeout: number) {
-		this.#fn = fn;
+	constructor(timeout: number) {
 		this.#timeout = timeout;
 	}
 
 	tick() {
 		if (this.remaining <= 0) {
-			return;
+			return false;
 		}
 		this.remaining--;
 		if (this.remaining <= 0) {
-			this.#fn();
+			return true;
 		}
+		return false;
 	}
 
 	restart() {
