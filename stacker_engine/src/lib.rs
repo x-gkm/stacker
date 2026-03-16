@@ -271,7 +271,7 @@ impl Engine {
         }
     }
 
-    fn harddrop(&mut self) {
+    fn lock_ghost(&mut self) {
         let Some(ref ghost_piece) = self.ghost_piece else {
             return;
         };
@@ -386,7 +386,7 @@ impl Engine {
                     self.spawn(piece);
                 }
                 Begin(Harddrop) => {
-                    self.harddrop();
+                    self.lock_ghost();
                 }
                 Begin(Move(Left)) => {
                     self.movement.move_left = true;
