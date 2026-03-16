@@ -31,8 +31,10 @@ pub enum PieceKind {
     Z,
 }
 
+type Coords = (i32, i32);
+
 impl PieceKind {
-    pub fn blocks(self, orientation: Orientation) -> [(i32, i32); 4] {
+    pub fn blocks(self, orientation: Orientation) -> [Coords; 4] {
         match (self, orientation) {
             (PieceKind::I, Orientation::N) => [(0, 0), (-1, 0), (1, 0), (2, 0)],
             (PieceKind::I, Orientation::E) => [(0, 0), (0, -2), (0, -1), (0, 1)],
@@ -503,7 +505,7 @@ impl Pile {
         }
     }
 
-    fn check_collision(&self, blocks: &[(i32, i32)]) -> bool {
+    fn check_collision(&self, blocks: &[Coords]) -> bool {
         for &(x, y) in blocks {
             if x < 0 || x >= PILE_WIDTH as i32 || y < 0 || y >= PILE_HEIGHT as i32 {
                 return true;
@@ -539,7 +541,7 @@ pub struct Piece {
     pub orientation: Orientation,
     pub x: i32,
     pub y: i32,
-    pub blocks: [(i32, i32); 4],
+    pub blocks: [Coords; 4],
 }
 
 impl Piece {
@@ -569,14 +571,14 @@ impl Piece {
     }
 }
 
-fn kick_offset(piece: PieceKind, from: Orientation, to: Orientation, n: i32) -> (i32, i32) {
+fn kick_offset(piece: PieceKind, from: Orientation, to: Orientation, n: i32) -> Coords {
     let (x1, y1) = kick_offset_part(piece, from, n);
     let (x2, y2) = kick_offset_part(piece, to, n);
 
     (x1 - x2, y1 - y2)
 }
 
-fn kick_offset_part(piece: PieceKind, orientation: Orientation, n: i32) -> (i32, i32) {
+fn kick_offset_part(piece: PieceKind, orientation: Orientation, n: i32) -> Coords {
     if piece == PieceKind::O {
         return match orientation {
             Orientation::N => (0, 0),
