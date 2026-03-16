@@ -124,6 +124,7 @@ export class Piece {
 type Garbage = { height: number; column: number };
 
 export type SerializedEngine = {
+	frame: number,
 	frameInputs: Input[];
 	pile: SerializedPile;
 	generator: SerializedPieceGenerator;
@@ -148,6 +149,7 @@ export type SerializedEngine = {
 };
 
 export class Engine {
+	#frame = 0
 	#frameInputs: Input[] = [];
 	#pile = new Pile();
 	#generator: PieceGenerator;
@@ -193,6 +195,7 @@ export class Engine {
 
 	serialize(): SerializedEngine {
 		return {
+			frame: this.#frame,
 			frameInputs: this.#frameInputs.slice(),
 			pile: this.#pile.serialize(),
 			generator: this.#generator.serialize(),
@@ -220,6 +223,7 @@ export class Engine {
 	static deserialize(state: SerializedEngine): Engine {
 		const engine = new Engine(0);
 
+		engine.#frame = state.frame;
 		engine.#frameInputs = state.frameInputs;
 		engine.#pile = Pile.deserialize(state.pile);
 		engine.#generator = PieceGenerator.deserialize(state.generator);
@@ -263,6 +267,8 @@ export class Engine {
 		if (this.#gameOver) {
 			return;
 		}
+
+		this.#frame++;
 
 		if (this.#gravityTimer.tick()) {
 			this.#fall();
@@ -465,6 +471,10 @@ export class Engine {
 		}
 
 		this.#resetCounter++;
+	}
+
+	get frame(): number {
+		return this.#frame;
 	}
 
 	get gameOver(): boolean {
