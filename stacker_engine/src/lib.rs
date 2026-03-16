@@ -240,30 +240,25 @@ impl Engine {
     }
 
     fn rotate(&mut self, count: i32) {
-        let Some(ref mut active_piece) = self.active_piece else {
+        let Some(ref active_piece) = self.active_piece else {
             return;
         };
 
-        let mut branched_piece = active_piece.clone();
-        branched_piece.orientation.rotate_cw(count);
+        let mut branched = active_piece.changed_by(0, 0, count);
 
         for n in 0..5 {
             let (kick_x, kick_y) = kick_offset(
                 active_piece.kind,
                 active_piece.orientation,
-                branched_piece.orientation,
+                branched.orientation,
                 n,
             );
-            branched_piece.x = active_piece.x + kick_x;
-            branched_piece.y = active_piece.y + kick_y;
-            branched_piece.update_blocks();
-            if !self.pile.check_collision(&branched_piece.blocks) {
-                *active_piece = branched_piece;
+            branched = active_piece.changed_by(kick_x, kick_y, count);
+            if !self.pile.check_collision(&branched.blocks) {
+                self.set_active(Some(branched));
                 break;
             }
         }
-
-        self.ghost_piece = Some(self.pile.calculate_ghost(active_piece));
     }
 
     fn harddrop(&mut self) {
@@ -281,8 +276,7 @@ impl Engine {
         }
 
         self.fall_timer.stop();
-        self.active_piece = None;
-        self.ghost_piece = None;
+        self.set_active(None);
         if line_clear {
             self.line_clear_timer.set(self.config.clear_delay);
             self.spawn_timer.set(self.config.clear_delay);
@@ -292,20 +286,19 @@ impl Engine {
     }
 
     fn do_move(&mut self, direction: Direction) {
-        let Some(ref mut active_piece) = self.active_piece else {
+        let Some(ref active_piece) = self.active_piece else {
             return;
         };
 
-        let mut branched_piece = active_piece.clone();
-        branched_piece.x += match direction {
+        let dx = match direction {
             Direction::Left => -1,
             Direction::Right => 1,
         };
-        branched_piece.update_blocks();
-        if !self.pile.check_collision(&branched_piece.blocks) {
-            *active_piece = branched_piece;
+
+        let branched = active_piece.changed_by(dx, 0, 0);
+        if !self.pile.check_collision(&branched.blocks) {
+            self.set_active(Some(branched));
         }
-        self.ghost_piece = Some(self.pile.calculate_ghost(active_piece))
     }
 
     fn fall(&mut self) {
@@ -313,11 +306,9 @@ impl Engine {
             return;
         };
 
-        let mut branched_piece = active_piece.clone();
-        branched_piece.y -= 1;
-        branched_piece.update_blocks();
-        if !self.pile.check_collision(&branched_piece.blocks) {
-            self.active_piece = Some(branched_piece);
+        let branched = active_piece.changed_by(0, -1, 0);
+        if !self.pile.check_collision(&branched.blocks) {
+            self.set_active(Some(branched));
         }
     }
 
@@ -329,11 +320,21 @@ impl Engine {
         });
     }
 
-    fn spawn(&mut self, piece: PieceKind) {
-        self.active_piece = Some(Piece::spawn(piece));
-        self.ghost_piece = Some(self.pile.calculate_ghost(self.active_piece.as_ref().unwrap()));
+    fn spawn(&mut self, kind: PieceKind) {
+        self.set_active(Some(Piece::spawn(kind)));
         self.fall();
         self.set_fall_timer();
+    }
+
+    fn set_active(&mut self, piece: Option<Piece>) {
+        let Some(piece) = piece else {
+            self.active_piece = None;
+            self.ghost_piece = None;
+            return;
+        };
+
+        self.active_piece = Some(piece);
+        self.ghost_piece = Some(self.pile.calculate_ghost(self.active_piece.as_ref().unwrap()));
     }
 
     pub fn update(&mut self, frame_inputs: &[Input]) {
@@ -522,11 +523,9 @@ impl Pile {
     fn calculate_ghost(&self, piece: &Piece) -> Piece {
         let mut ghost_piece = piece.clone();
         loop {
-            let mut branched_piece = ghost_piece.clone();
-            branched_piece.y -= 1;
-            branched_piece.update_blocks();
-            if !self.check_collision(&branched_piece.blocks) {
-                ghost_piece = branched_piece;
+            let branched = ghost_piece.changed_by(0, -1, 0);
+            if !self.check_collision(&branched.blocks) {
+                ghost_piece = branched;
             } else {
                 break;
             }
@@ -568,6 +567,18 @@ impl Piece {
             .kind
             .blocks(self.orientation)
             .map(|(bx, by)| (self.x + bx, self.y + by));
+    }
+
+    fn changed_by(&self, dx: i32, dy: i32, rotate_cw: i32) -> Piece {
+        let mut branched = self.clone();
+
+        branched.x += dx;
+        branched.y += dy;
+        branched.orientation.rotate_cw(rotate_cw);
+
+        branched.update_blocks();
+
+        branched
     }
 }
 
