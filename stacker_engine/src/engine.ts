@@ -181,7 +181,7 @@ export class Engine {
 
 		this.#gravityTimer = new Timer(60);
 		this.#gravityTimer.restart();
-		this.#softdropTimer = new Timer(3);
+		this.#softdropTimer = new Timer(1);
 		this.#dasTimer = new Timer(6);
 		this.#arrTimer = new Timer(1);
 		this.#lockTimer = new Timer(30);
