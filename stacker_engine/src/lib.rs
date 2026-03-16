@@ -285,9 +285,9 @@ impl Engine {
         }
     }
 
-    fn do_move(&mut self, direction: Direction) {
+    fn can_move(&self, direction: Direction) -> Option<Piece> {
         let Some(ref active_piece) = self.active_piece else {
-            return;
+            return None;
         };
 
         let dx = match direction {
@@ -296,9 +296,19 @@ impl Engine {
         };
 
         let branched = active_piece.changed_by(dx, 0, 0);
-        if !self.pile.check_collision(&branched.blocks) {
-            self.set_active(Some(branched));
+        if self.pile.check_collision(&branched.blocks) {
+            return None;
         }
+
+        Some(branched)
+    }
+
+    fn do_move(&mut self, direction: Direction) {
+        let Some(piece) = self.can_move(direction) else {
+            return;
+        };
+
+        self.set_active(Some(piece));
     }
 
     fn fall(&mut self) {
@@ -428,8 +438,20 @@ impl Engine {
             self.set_fall_timer();
         }
         if self.das_timer.tick() {
-            self.do_move(self.movement.das.unwrap());
-            self.das_timer.set(self.config.arr);
+            let direction = self.movement.das.unwrap();
+            self.do_move(direction);
+            if self.config.arr > 0 {
+                self.das_timer.set(self.config.arr);
+            } else {
+                self.das_timer.set(1);
+                loop {
+                    if let Some(piece) = self.can_move(direction) {
+                        self.set_active(Some(piece));
+                    } else {
+                        break;
+                    }
+                }
+            }
         }
     }
 

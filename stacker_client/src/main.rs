@@ -13,7 +13,7 @@ async fn main() {
         0,
         GameConfig {
             das: 6,
-            arr: 1,
+            arr: 0,
             are: 6,
             gravity: 60,
             softdrop: 3,
