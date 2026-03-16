@@ -189,8 +189,17 @@ socket.addEventListener("message", msg => {
 	}
 });
 
+socket.addEventListener("open", () => {
+	for (const command of bufferedCommands) {
+		socket.send(JSON.stringify(command));
+	}
+});
+
+type Command = { command: "update" } | { command: "inputs"; inputs: Input[] };
+
 const engine = new Engine(0);
 const opponents: Record<number, Engine> = {};
+const bufferedCommands: Command[] = [];
 let previousTime = performance.now();
 let residueTime = 0;
 
@@ -207,8 +216,11 @@ function draw() {
 				opponent.queueGarbage(engine.attack);
 			}
 		}
+		const command = { command: "update" } as const;
 		if (socket.readyState === WebSocket.OPEN) {
-			socket.send(JSON.stringify({ command: "update" }));
+			socket.send(JSON.stringify(command));
+		} else {
+			bufferedCommands.push(command);
 		}
 	}
 
@@ -294,8 +306,11 @@ document.addEventListener("keydown", ev => {
 		}
 	}
 
+	const command = { command: "inputs", inputs } as const;
 	if (socket.readyState === WebSocket.OPEN) {
-		socket.send(JSON.stringify({ command: "inputs", inputs }));
+		socket.send(JSON.stringify(command));
+	} else {
+		bufferedCommands.push(command);
 	}
 });
 
@@ -318,7 +333,10 @@ document.addEventListener("keyup", ev => {
 		}
 	}
 
+	const command = { command: "inputs", inputs } as const;
 	if (socket.readyState === WebSocket.OPEN) {
-		socket.send(JSON.stringify({ command: "inputs", inputs }));
+		socket.send(JSON.stringify(command));
+	} else {
+		bufferedCommands.push(command);
 	}
 });
