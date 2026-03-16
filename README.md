@@ -20,3 +20,7 @@ Things left to implement:
 - [ ] Back to back
 - [ ] T-spins
 - [ ] Input buffering
+- [ ] Garbage
+- [ ] Multiplayer server
+- [ ] Implement proper 180 kicks
+- [ ] Proper client (iced, wgpu etc.)
