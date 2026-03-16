@@ -163,22 +163,16 @@ socket.addEventListener("message", msg => {
 
 	switch (obj.command) {
 		case "newOpponent":
-			opponents.push({ id: obj.id, engine: new Engine(0) });
+			opponents[obj.id] = new Engine(0);
 			break;
 		case "addOpponent":
-			opponents.push({
-				id: obj.id,
-				engine: Engine.deserialize(obj.state),
-			});
+			opponents[obj.id] = Engine.deserialize(obj.state);
 			break;
 		case "removeOpponent":
-			opponents.splice(
-				opponents.findIndex(({ id }) => obj.id === id),
-				1,
-			);
+			delete opponents[obj.id]
 			break;
 		case "opponentData":
-			const opponent = opponents.find(({ id }) => id === obj.id).engine;
+			const opponent = opponents[obj.id];
 			switch (obj.data.command) {
 				case "inputs":
 					for (const input of obj.data.inputs) {
@@ -196,7 +190,7 @@ socket.addEventListener("message", msg => {
 });
 
 const engine = new Engine(0);
-const opponents: { id: number; engine: Engine }[] = [];
+const opponents: Record<number, Engine> = {};
 let previousTime = performance.now();
 let residueTime = 0;
 
@@ -209,8 +203,8 @@ function draw() {
 		residueTime -= 1000 / ENGINE_FPS;
 		engine.update();
 		if (engine.attack > 0) {
-			for (const opponent of opponents) {
-				opponent.engine.queueGarbage(engine.attack);
+			for (const opponent of Object.values(opponents)) {
+				opponent.queueGarbage(engine.attack);
 			}
 		}
 		if (socket.readyState === WebSocket.OPEN) {
@@ -221,7 +215,7 @@ function draw() {
 	ctx.fillStyle = "#000000";
 	ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-	const engines = [engine, ...opponents.map(({ engine }) => engine)];
+	const engines = [engine, ...Object.values(opponents)];
 	for (let i = 0; i < engines.length; i++) {
 		renderEngine(engines[i], i, engines.length);
 	}
