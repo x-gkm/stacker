@@ -20,6 +20,8 @@ class Client {
 		this.#id = Client.#nextId++;
 		Client.#clients[this.#id] = this;
 
+		Client.#resetAll();
+
 		this.#broadcast("newOpponent");
 		this.#ws.on("close", () => {
 			this.#broadcast("removeOpponent");
@@ -54,6 +56,16 @@ class Client {
 				state: client.#engine.serialize(),
 			});
 		}
+	}
+
+	static #resetAll() {
+		for (const key in this.#clients) {
+			if (!this.#clients.hasOwnProperty(key)) {
+				continue;
+			}
+
+			this.#clients[key]!.#engine = new Engine(0);
+		}	
 	}
 
 	#applyAttack() {

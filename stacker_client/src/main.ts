@@ -157,12 +157,24 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 	}
 }
 
+function resetAll() {
+	engine = new Engine(0);
+	for (const key in opponents) {
+		if (!opponents.hasOwnProperty(key)) {
+			continue;
+		}
+
+		opponents[key] = new Engine(0);
+	}
+}
+
 const socket = new WebSocket("/ws");
 socket.addEventListener("message", msg => {
 	const obj = JSON.parse(msg.data);
 
 	switch (obj.command) {
 		case "newOpponent":
+			resetAll();
 			opponents[obj.id] = new Engine(0);
 			break;
 		case "addOpponent":
@@ -197,7 +209,7 @@ socket.addEventListener("open", () => {
 
 type Command = { command: "update" } | { command: "inputs"; inputs: Input[] };
 
-const engine = new Engine(0);
+let engine = new Engine(0);
 const opponents: Record<number, Engine> = {};
 const bufferedCommands: Command[] = [];
 let previousTime = performance.now();
