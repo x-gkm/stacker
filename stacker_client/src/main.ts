@@ -169,7 +169,7 @@ socket.addEventListener("message", msg => {
 			opponents[obj.id] = Engine.deserialize(obj.state);
 			break;
 		case "removeOpponent":
-			delete opponents[obj.id]
+			delete opponents[obj.id];
 			break;
 		case "opponentData":
 			const opponent = opponents[obj.id];

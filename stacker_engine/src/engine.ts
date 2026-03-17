@@ -124,7 +124,7 @@ export class Piece {
 type Garbage = { height: number; column: number };
 
 export type SerializedEngine = {
-	frame: number,
+	frame: number;
 	frameInputs: Input[];
 	pile: SerializedPile;
 	generator: SerializedPieceGenerator;
@@ -149,7 +149,7 @@ export type SerializedEngine = {
 };
 
 export class Engine {
-	#frame = 0
+	#frame = 0;
 	#frameInputs: Input[] = [];
 	#pile = new Pile();
 	#generator: PieceGenerator;
@@ -676,8 +676,8 @@ function kickOffset(type: PieceType, rotation: Rotation, n: number): Coords {
 }
 
 type SerializedPile = {
-	rows: Cell[][],
-	lastLinesCleared: number,
+	rows: Cell[][];
+	lastLinesCleared: number;
 };
 
 class Pile {
@@ -703,7 +703,7 @@ class Pile {
 		return {
 			rows: structuredClone(this.#rows),
 			lastLinesCleared: this.#lastLinesCleared,
-		}
+		};
 	}
 
 	#emptyRow() {
