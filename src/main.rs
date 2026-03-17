@@ -17,7 +17,7 @@ async fn main() {
             arr: 0,
             are: 0,
             gravity: 60,
-            softdrop: 3,
+            softdrop: 0,
             clear_delay: 0,
         },
     );
