@@ -185,18 +185,9 @@ socket.addEventListener("message", msg => {
 			break;
 		case "opponentData":
 			const opponent = opponents[obj.id];
-			switch (obj.data.command) {
-				case "inputs":
-					for (const input of obj.data.inputs) {
-						opponent.queueInput(input);
-					}
-					break;
-				case "update":
-					opponent.update();
-					if (opponent.attack > 0) {
-						engine.queueGarbage(opponent.attack);
-					}
-					break;
+			opponent.update(obj.data.inputs);
+			if (opponent.attack > 0) {
+				engine.queueGarbage(opponent.attack);
 			}
 	}
 });
@@ -205,11 +196,13 @@ socket.addEventListener("open", () => {
 	for (const command of bufferedCommands) {
 		socket.send(JSON.stringify(command));
 	}
+	bufferedCommands.length = 0;
 });
 
-type Command = { command: "update" } | { command: "inputs"; inputs: Input[] };
+type Command = { inputs: Input[] };
 
 let engine = new Engine(0);
+const inputs: Input[] = [];
 const opponents: Record<number, Engine> = {};
 const bufferedCommands: Command[] = [];
 let previousTime = performance.now();
@@ -222,17 +215,20 @@ function draw() {
 
 	while (residueTime >= 1000 / ENGINE_FPS) {
 		residueTime -= 1000 / ENGINE_FPS;
-		engine.update();
-		if (engine.attack > 0) {
-			for (const opponent of Object.values(opponents)) {
-				opponent.queueGarbage(engine.attack);
-			}
-		}
-		const command = { command: "update" } as const;
+
+		engine.update(inputs);
+		const command = { inputs } as const;
 		if (socket.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(command));
 		} else {
 			bufferedCommands.push(command);
+		}
+		inputs.length = 0;
+
+		if (engine.attack > 0) {
+			for (const opponent of Object.values(opponents)) {
+				opponent.queueGarbage(engine.attack);
+			}
 		}
 	}
 
@@ -310,19 +306,10 @@ document.addEventListener("keydown", ev => {
 		[keymap.moveRight]: "startMoveRight",
 	};
 
-	const inputs: Input[] = [];
 	for (const [keyCode, input] of Object.entries(mapping)) {
 		if (ev.code === keyCode) {
-			engine.queueInput(input);
 			inputs.push(input);
 		}
-	}
-
-	const command = { command: "inputs", inputs } as const;
-	if (socket.readyState === WebSocket.OPEN) {
-		socket.send(JSON.stringify(command));
-	} else {
-		bufferedCommands.push(command);
 	}
 });
 
@@ -337,18 +324,9 @@ document.addEventListener("keyup", ev => {
 		[keymap.moveRight]: "stopMoveRight",
 	};
 
-	const inputs: Input[] = [];
 	for (const [keyCode, input] of Object.entries(mapping)) {
 		if (ev.code === keyCode) {
-			engine.queueInput(input);
 			inputs.push(input);
 		}
-	}
-
-	const command = { command: "inputs", inputs } as const;
-	if (socket.readyState === WebSocket.OPEN) {
-		socket.send(JSON.stringify(command));
-	} else {
-		bufferedCommands.push(command);
 	}
 });

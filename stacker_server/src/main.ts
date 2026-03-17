@@ -5,9 +5,7 @@ const wss = new WebSocketServer({
 	port: 8080,
 });
 
-type ClientMessage =
-	| { command: "inputs"; inputs: Input[] }
-	| { command: "update" };
+type ClientMessage = { inputs: Input[] };
 
 class Client {
 	static #clients: Record<number, Client> = [];
@@ -30,18 +28,9 @@ class Client {
 
 		this.#ws.on("message", msg => {
 			const data: ClientMessage = JSON.parse(msg.toString());
-			switch (data.command) {
-				case "inputs":
-					for (const input of data.inputs) {
-						this.#engine.queueInput(input);
-					}
-					break;
-				case "update":
-					this.#engine.update();
-					if (this.#engine.attack > 0) {
-						this.#applyAttack();
-					}
-					break;
+			this.#engine.update(data.inputs);
+			if (this.#engine.attack > 0) {
+				this.#applyAttack();
 			}
 			this.#broadcast("opponentData", { data });
 		});
@@ -65,7 +54,7 @@ class Client {
 			}
 
 			this.#clients[key]!.#engine = new Engine(0);
-		}	
+		}
 	}
 
 	#applyAttack() {

@@ -125,7 +125,6 @@ type Garbage = { height: number; column: number };
 
 export type SerializedEngine = {
 	frame: number;
-	frameInputs: Input[];
 	pile: SerializedPile;
 	generator: SerializedPieceGenerator;
 	activePiece: SerializedPiece;
@@ -150,7 +149,6 @@ export type SerializedEngine = {
 
 export class Engine {
 	#frame = 0;
-	#frameInputs: Input[] = [];
 	#pile = new Pile();
 	#generator: PieceGenerator;
 	#activePiece: Piece;
@@ -196,7 +194,6 @@ export class Engine {
 	serialize(): SerializedEngine {
 		return {
 			frame: this.#frame,
-			frameInputs: this.#frameInputs.slice(),
 			pile: this.#pile.serialize(),
 			generator: this.#generator.serialize(),
 			activePiece: this.#activePiece.serialize(),
@@ -222,7 +219,6 @@ export class Engine {
 
 	deserializeInPlace(state: SerializedEngine) {
 		this.#frame = state.frame;
-		this.#frameInputs = state.frameInputs;
 		this.#pile = Pile.deserialize(state.pile);
 		this.#generator = PieceGenerator.deserialize(state.generator);
 		this.#activePiece = Piece.deserialize(state.activePiece);
@@ -257,15 +253,7 @@ export class Engine {
 		this.#garbageQueue.push(lines);
 	}
 
-	queueInput(input: Input) {
-		if (this.#gameOver) {
-			return;
-		}
-
-		this.#frameInputs.push(input);
-	}
-
-	update() {
+	update(inputs: Input[]) {
 		this.#attack = 0;
 
 		if (this.#gameOver) {
@@ -299,10 +287,9 @@ export class Engine {
 			this.#tryLock();
 		}
 
-		for (const input of this.#frameInputs) {
+		for (const input of inputs) {
 			this.#handleInput(input);
 		}
-		this.#frameInputs.length = 0;
 	}
 
 	#handleInput(input: Input) {
