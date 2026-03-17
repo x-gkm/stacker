@@ -505,6 +505,83 @@ export class Engine {
 	}
 }
 
+type SerializedGarbageRollbackEngine = SerializedEngine & {
+	rollbackEngine: SerializedEngine;
+	rollbackInputs: Input[][];
+	pendingGarbage: Record<number, number>;
+};
+
+export class GarbageRollbackEngine extends Engine {
+	#rollbackEngine: Engine;
+	#rollbackInputs: Input[][] = [];
+	#pendingGarbage: Record<number, number> = {};
+	constructor(seed: number) {
+		super(seed);
+		this.#rollbackEngine = new Engine(seed);
+	}
+
+	update(inputs: Input[]): void {
+		super.update(inputs);
+		if (this.#pendingGarbage[this.frame] !== undefined) {
+			// someone hit us in the future, apply it now.
+			this.queueGarbage(this.#pendingGarbage[this.frame]!)
+		}
+		this.#rollbackInputs.push(inputs.slice());
+		if (this.#rollbackInputs.length > 60) {
+			this.#rollbackEngine.update(this.#rollbackInputs.shift()!);
+			if (this.#pendingGarbage[this.#rollbackEngine.frame] !== undefined) {
+				// the past entry must be applied and deleted.
+				this.#rollbackEngine.queueGarbage(this.#pendingGarbage[this.#rollbackEngine.frame]!);
+				delete this.#pendingGarbage[this.#rollbackEngine.frame];
+			}
+		}
+	}
+
+	serialize(): SerializedGarbageRollbackEngine {
+		return {
+			...super.serialize(),
+			rollbackEngine: this.#rollbackEngine.serialize(),
+			rollbackInputs: structuredClone(this.#rollbackInputs),
+			pendingGarbage: structuredClone(this.#pendingGarbage),
+		};
+	}
+
+	static deserialize(
+		state: SerializedGarbageRollbackEngine,
+	): GarbageRollbackEngine {
+		const engine = new GarbageRollbackEngine(0);
+
+		engine.deserializeInPlace(state);
+		engine.#rollbackEngine = Engine.deserialize(state.rollbackEngine);
+		engine.#rollbackInputs = state.rollbackInputs;
+		engine.#pendingGarbage = state.pendingGarbage;
+
+		return engine;
+	}
+
+	addGarbage(frame: number, attack: number) {
+		console.log(`current frame: ${this.frame}, incoming frame: ${frame}`);
+		this.#pendingGarbage[frame] = attack;
+
+		if (frame > this.frame) {
+			return;
+		}
+
+		// if there are any pending garbages in the past, rollback.
+
+		const rolling = Engine.deserialize(this.#rollbackEngine.serialize());
+		const inputs = structuredClone(this.#rollbackInputs);
+		while (inputs.length > 0) {
+			rolling.update(inputs.shift()!);
+			if (this.#pendingGarbage[rolling.frame] !== undefined) {
+				// apply the garbage.
+				rolling.queueGarbage(this.#pendingGarbage[rolling.frame]!);
+			}
+		}
+		this.deserializeInPlace(rolling.serialize());
+	}
+}
+
 const NORTH_PIECES: Record<PieceType, Coords[]> = {
 	i: [
 		[-1, 0],

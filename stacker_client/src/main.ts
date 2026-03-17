@@ -1,6 +1,7 @@
 import {
 	Engine,
 	ENGINE_FPS,
+	GarbageRollbackEngine,
 	PILE_HEIGHT,
 	PILE_WIDTH,
 	type Input,
@@ -158,13 +159,13 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 }
 
 function resetAll() {
-	engine = new Engine(0);
+	engine = new GarbageRollbackEngine(0);
 	for (const key in opponents) {
 		if (!opponents.hasOwnProperty(key)) {
 			continue;
 		}
 
-		opponents[key] = new Engine(0);
+		opponents[key] = new GarbageRollbackEngine(0);
 	}
 }
 
@@ -175,10 +176,10 @@ socket.addEventListener("message", msg => {
 	switch (obj.command) {
 		case "newOpponent":
 			resetAll();
-			opponents[obj.id] = new Engine(0);
+			opponents[obj.id] = new GarbageRollbackEngine(0);
 			break;
 		case "addOpponent":
-			opponents[obj.id] = Engine.deserialize(obj.state);
+			opponents[obj.id] = GarbageRollbackEngine.deserialize(obj.state);
 			break;
 		case "removeOpponent":
 			delete opponents[obj.id];
@@ -187,7 +188,7 @@ socket.addEventListener("message", msg => {
 			const opponent = opponents[obj.id];
 			opponent.update(obj.data.inputs);
 			if (opponent.attack > 0) {
-				engine.queueGarbage(opponent.attack);
+				engine.addGarbage(opponent.frame, opponent.attack);
 			}
 	}
 });
@@ -201,9 +202,9 @@ socket.addEventListener("open", () => {
 
 type Command = { inputs: Input[] };
 
-let engine = new Engine(0);
+let engine = new GarbageRollbackEngine(0);
 const inputs: Input[] = [];
-const opponents: Record<number, Engine> = {};
+const opponents: Record<number, GarbageRollbackEngine> = {};
 const bufferedCommands: Command[] = [];
 let previousTime = performance.now();
 let residueTime = 0;
@@ -227,7 +228,7 @@ function draw() {
 
 		if (engine.attack > 0) {
 			for (const opponent of Object.values(opponents)) {
-				opponent.queueGarbage(engine.attack);
+				opponent.addGarbage(engine.frame, engine.attack);
 			}
 		}
 	}

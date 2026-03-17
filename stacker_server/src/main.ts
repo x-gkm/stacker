@@ -1,4 +1,4 @@
-import { Engine, type Input } from "stacker_engine";
+import { GarbageRollbackEngine, type Input } from "stacker_engine";
 import { type WebSocket, WebSocketServer } from "ws";
 
 const wss = new WebSocketServer({
@@ -12,7 +12,7 @@ class Client {
 	static #nextId = 0;
 	#ws: WebSocket;
 	#id: number;
-	#engine = new Engine(0);
+	#engine = new GarbageRollbackEngine(0);
 	constructor(ws: WebSocket) {
 		this.#ws = ws;
 		this.#id = Client.#nextId++;
@@ -53,7 +53,7 @@ class Client {
 				continue;
 			}
 
-			this.#clients[key]!.#engine = new Engine(0);
+			this.#clients[key]!.#engine = new GarbageRollbackEngine(0);
 		}
 	}
 
@@ -63,7 +63,7 @@ class Client {
 				continue;
 			}
 
-			client.#engine.queueGarbage(this.#engine.attack);
+			client.#engine.addGarbage(this.#engine.frame, this.#engine.attack);
 		}
 	}
 
