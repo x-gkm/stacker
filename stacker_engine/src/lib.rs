@@ -403,11 +403,23 @@ impl Engine {
     }
 
     fn set_fall_timer(&mut self) {
-        self.fall_timer.set(if self.movement.soft_dropping {
+        let timeout = if self.movement.soft_dropping {
             self.config.softdrop
         } else {
             self.config.gravity
-        });
+        };
+
+        if timeout > 0 {
+            self.fall_timer.set(timeout);
+        } else {
+            self.fall_timer.set(1);
+            let Some(piece) = self.can_move(0, -1, 0) else {
+                return;
+            };
+
+            self.set_active(Some(piece));
+            self.set_fall_timer();
+        }
     }
 
     fn spawn(&mut self, kind: PieceKind) {
@@ -584,11 +596,11 @@ impl Engine {
                 Begin(Softdrop) => {
                     self.fall();
                     self.movement.soft_dropping = true;
-                    self.fall_timer.set(self.config.softdrop);
+                    self.set_fall_timer();
                 }
                 End(Softdrop) => {
                     self.movement.soft_dropping = false;
-                    self.fall_timer.set(self.config.gravity);
+                    self.set_fall_timer();
                 }
                 _ => (),
             }
