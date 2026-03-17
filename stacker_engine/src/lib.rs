@@ -321,14 +321,20 @@ impl Engine {
 
         self.fall_timer.stop();
         self.set_active(None);
+        let spawn_delay;
         if lines_to_clear > 0 {
-            self.line_clear_timer.set(self.config.clear_delay);
-            self.spawn_timer
-                .set(if self.config.clear_delay > self.config.are {
-                    self.config.clear_delay
-                } else {
-                    self.config.are
-                });
+            spawn_delay = if self.config.clear_delay > self.config.are {
+                self.config.clear_delay
+            } else {
+                self.config.are
+            };
+
+            if self.config.clear_delay > 0 {
+                self.line_clear_timer.set(self.config.clear_delay);
+            } else {
+                self.pile.line_clear();
+            }
+
             if let Some(ref mut combo) = self.combo {
                 *combo += 1;
             } else {
@@ -344,8 +350,15 @@ impl Engine {
                 self.back_to_back = None;
             }
         } else {
-            self.spawn_timer.set(self.config.are);
+            spawn_delay = self.config.are;
+
             self.combo = None;
+        }
+
+        if spawn_delay > 0 {
+            self.spawn_timer.set(spawn_delay);
+        } else {
+            self.spawn_next();
         }
     }
 
@@ -413,6 +426,11 @@ impl Engine {
         self.set_fall_timer();
     }
 
+    fn spawn_next(&mut self) {
+        let piece = self.next_queue.pull();
+        self.spawn(piece);
+    }
+
     fn set_active(&mut self, piece: Option<Piece>) {
         let Some(piece) = piece else {
             self.active_piece = None;
@@ -469,8 +487,7 @@ impl Engine {
             self.pile.line_clear();
         }
         if self.spawn_timer.tick() {
-            let piece = self.next_queue.pull();
-            self.spawn(piece);
+            self.spawn_next();
         }
         if self.fall_timer.tick() {
             self.fall();

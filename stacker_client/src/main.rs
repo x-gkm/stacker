@@ -15,10 +15,10 @@ async fn main() {
         GameConfig {
             das: 6,
             arr: 0,
-            are: 6,
+            are: 0,
             gravity: 60,
             softdrop: 3,
-            clear_delay: 6,
+            clear_delay: 0,
         },
     );
     let mut prev_time = Instant::now();
