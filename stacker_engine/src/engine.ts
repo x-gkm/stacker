@@ -220,31 +220,35 @@ export class Engine {
 		};
 	}
 
+	deserializeInPlace(state: SerializedEngine) {
+		this.#frame = state.frame;
+		this.#frameInputs = state.frameInputs;
+		this.#pile = Pile.deserialize(state.pile);
+		this.#generator = PieceGenerator.deserialize(state.generator);
+		this.#activePiece = Piece.deserialize(state.activePiece);
+		this.#lowestY = state.lowestY;
+		this.#ghostPiece = Piece.deserialize(state.ghostPiece);
+		this.#holdPiece = state.holdPiece ? new Piece(state.holdPiece) : null;
+		this.#holdLocked = state.holdLocked;
+		this.#gravityTimer = Timer.deserialize(state.gravityTimer);
+		this.#softdropTimer = Timer.deserialize(state.softdropTimer);
+		this.#moveLeft = state.moveLeft;
+		this.#moveRight = state.moveRight;
+		this.#dasDirection = state.dasDirection;
+		this.#dasTimer = Timer.deserialize(state.dasTimer);
+		this.#arrTimer = Timer.deserialize(state.arrTimer);
+		this.#lockTimer = Timer.deserialize(state.lockTimer);
+		this.#resetCounter = state.resetCounter;
+		this.#gameOver = state.gameOver;
+		this.#garbageRng = new RNG(state.garbageRngState);
+		this.#garbageQueue = state.garbageQueue;
+		this.#attack = state.attack;
+	}
+
 	static deserialize(state: SerializedEngine): Engine {
 		const engine = new Engine(0);
 
-		engine.#frame = state.frame;
-		engine.#frameInputs = state.frameInputs;
-		engine.#pile = Pile.deserialize(state.pile);
-		engine.#generator = PieceGenerator.deserialize(state.generator);
-		engine.#activePiece = Piece.deserialize(state.activePiece);
-		engine.#lowestY = state.lowestY;
-		engine.#ghostPiece = Piece.deserialize(state.ghostPiece);
-		engine.#holdPiece = state.holdPiece ? new Piece(state.holdPiece) : null;
-		engine.#holdLocked = state.holdLocked;
-		engine.#gravityTimer = Timer.deserialize(state.gravityTimer);
-		engine.#softdropTimer = Timer.deserialize(state.softdropTimer);
-		engine.#moveLeft = state.moveLeft;
-		engine.#moveRight = state.moveRight;
-		engine.#dasDirection = state.dasDirection;
-		engine.#dasTimer = Timer.deserialize(state.dasTimer);
-		engine.#arrTimer = Timer.deserialize(state.arrTimer);
-		engine.#lockTimer = Timer.deserialize(state.lockTimer);
-		engine.#resetCounter = state.resetCounter;
-		engine.#gameOver = state.gameOver;
-		engine.#garbageRng = new RNG(state.garbageRngState);
-		engine.#garbageQueue = state.garbageQueue;
-		engine.#attack = state.attack;
+		engine.deserializeInPlace(state);
 
 		return engine;
 	}
