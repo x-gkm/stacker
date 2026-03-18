@@ -159,7 +159,9 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 
 	ctx.fillStyle = "#ffffff";
 	ctx.font = "50px sans-serif";
+
 	ctx.fillText(`back-to-back: ${engine.backToBack}`, 0, 50);
+	ctx.fillText(`combo: ${engine.combo}`, 0, 100);
 }
 
 function resetAll() {

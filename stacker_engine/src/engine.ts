@@ -151,6 +151,7 @@ export type SerializedEngine = {
 	garbageQueue: number[];
 	attack: number;
 	backToBack: number | null;
+	combo: number | null;
 };
 
 export class Engine {
@@ -176,6 +177,7 @@ export class Engine {
 	#garbageQueue: number[] = [];
 	#attack: number = 0;
 	#backToBack: number | null = null;
+	#combo: number | null = null;
 
 	constructor(seed: number) {
 		this.#generator = new PieceGenerator(seed);
@@ -220,6 +222,7 @@ export class Engine {
 			garbageQueue: this.#garbageQueue.slice(),
 			attack: this.#attack,
 			backToBack: this.#backToBack,
+			combo: this.combo,
 		};
 	}
 
@@ -246,6 +249,7 @@ export class Engine {
 		this.#garbageQueue = state.garbageQueue;
 		this.#attack = state.attack;
 		this.#backToBack = state.backToBack;
+		this.#combo = state.combo;
 	}
 
 	static deserialize(state: SerializedEngine): Engine {
@@ -410,6 +414,16 @@ export class Engine {
 			this.#backToBack = null;
 		}
 
+		if (linesCleared > 0) {
+			if (typeof this.#combo === "number") {
+				this.#combo++;
+			} else {
+				this.#combo = 0;
+			}
+		} else {
+			this.#combo = null;
+		}
+
 		for (const lines of this.#garbageQueue) {
 			this.#pile.addGarbage({
 				height: lines,
@@ -527,6 +541,10 @@ export class Engine {
 
 	get backToBack(): number {
 		return this.#backToBack ?? 0;
+	}
+
+	get combo(): number {
+		return this.#combo ?? 0;
 	}
 }
 

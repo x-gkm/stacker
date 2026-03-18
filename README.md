@@ -14,7 +14,7 @@ Things left to implement:
 - [x] Block out
 - [x] Top out
 - [x] Back to back
-- [ ] Combos
+- [x] Combos
 - [ ] T-spins
 - [ ] Spawn delay
 - [ ] Line clear delay
