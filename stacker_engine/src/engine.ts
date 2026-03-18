@@ -23,6 +23,22 @@ export const BOARD_HEIGHT = 20;
 
 export const ENGINE_FPS = 60;
 
+export const DEFAULT_CONFIG: Config = {
+	das: 6,
+	arr: 0,
+	gravity: 60,
+	softdrop: 1,
+	lock: 30,
+};
+
+type Config = {
+	das: number;
+	arr: number;
+	gravity: number;
+	softdrop: number;
+	lock: number;
+};
+
 type SerializedPiece = {
 	type: PieceType;
 	x: number;
@@ -129,6 +145,7 @@ export class Piece {
 type Garbage = { height: number; column: number };
 
 export type SerializedEngine = {
+	config: Config;
 	frame: number;
 	pile: SerializedPile;
 	generator: SerializedPieceGenerator;
@@ -155,6 +172,7 @@ export type SerializedEngine = {
 };
 
 export class Engine {
+	#config: Config;
 	#frame = 0;
 	#pile = new Pile();
 	#generator: PieceGenerator;
@@ -163,35 +181,32 @@ export class Engine {
 	#ghostPiece: Piece;
 	#holdPiece: Piece | null = null;
 	#holdLocked = false;
-	#gravityTimer: Timer;
-	#softdropTimer: Timer;
-	#moveLeft: boolean = false;
-	#moveRight: boolean = false;
+	#gravityTimer = new Timer();
+	#softdropTimer = new Timer();
+	#moveLeft = false;
+	#moveRight = false;
 	#dasDirection: "left" | "right" | null = null;
-	#dasTimer: Timer;
-	#arrTimer: Timer;
-	#lockTimer: Timer;
+	#dasTimer = new Timer();
+	#arrTimer = new Timer();
+	#lockTimer = new Timer();
 	#resetCounter: number;
-	#gameOver: boolean = false;
+	#gameOver = false;
 	#garbageRng: RNG;
 	#garbageQueue: number[] = [];
-	#attack: number = 0;
+	#attack = 0;
 	#backToBack: number | null = null;
 	#combo: number | null = null;
 
-	constructor(seed: number) {
+	constructor(seed: number, config: Config = DEFAULT_CONFIG) {
+		this.#config = config;
+
 		this.#generator = new PieceGenerator(seed);
 
 		this.#activePiece = Piece.spawn(this.#generator.pull().type);
 		this.#lowestY = this.#activePiece.lowestY();
 		this.#ghostPiece = this.#pile.calculateGhost(this.#activePiece);
 
-		this.#gravityTimer = new Timer(60);
-		this.#gravityTimer.restart();
-		this.#softdropTimer = new Timer(1);
-		this.#dasTimer = new Timer(6);
-		this.#arrTimer = new Timer(1);
-		this.#lockTimer = new Timer(30);
+		this.#gravityTimer.set(config.gravity);
 
 		this.#resetCounter = 0;
 
@@ -200,6 +215,7 @@ export class Engine {
 
 	serialize(): SerializedEngine {
 		return {
+			config: this.#config,
 			frame: this.#frame,
 			pile: this.#pile.serialize(),
 			generator: this.#generator.serialize(),
@@ -227,6 +243,7 @@ export class Engine {
 	}
 
 	deserializeInPlace(state: SerializedEngine) {
+		this.#config = state.config;
 		this.#frame = state.frame;
 		this.#pile = Pile.deserialize(state.pile);
 		this.#generator = PieceGenerator.deserialize(state.generator);
@@ -275,22 +292,22 @@ export class Engine {
 
 		if (this.#gravityTimer.tick()) {
 			this.#fall();
-			this.#gravityTimer.restart();
+			this.#gravityTimer.set(this.#config.gravity);
 		}
 
 		if (this.#softdropTimer.tick()) {
 			this.#fall();
-			this.#softdropTimer.restart();
+			this.#softdropTimer.set(this.#config.softdrop);
 		}
 
 		if (this.#dasTimer.tick()) {
-			this.#arrTimer.restart();
+			this.#arrTimer.set(this.#config.arr);
 		}
 
 		if (this.#arrTimer.tick()) {
 			if (this.#dasDirection !== null) {
 				this.#move(this.#dasDirection);
-				this.#arrTimer.restart();
+				this.#arrTimer.set(this.#config.arr);
 			}
 		}
 
@@ -333,21 +350,21 @@ export class Engine {
 				this.#moveLeft = true;
 				this.#move("left");
 				this.#dasDirection = "left";
-				this.#dasTimer.restart();
+				this.#dasTimer.set(this.#config.das);
 				this.#arrTimer.stop();
 				break;
 			case "startMoveRight":
 				this.#moveRight = true;
 				this.#move("right");
 				this.#dasDirection = "right";
-				this.#dasTimer.restart();
+				this.#dasTimer.set(this.#config.das);
 				this.#arrTimer.stop();
 				break;
 			case "stopMoveLeft":
 				this.#moveLeft = false;
 				if (this.#moveRight) {
 					this.#dasDirection = "right";
-					this.#dasTimer.restart();
+					this.#dasTimer.set(this.#config.das);
 				} else {
 					this.#dasDirection = null;
 					this.#dasTimer.stop();
@@ -358,7 +375,7 @@ export class Engine {
 				this.#moveRight = false;
 				if (this.#moveLeft) {
 					this.#dasDirection = "left";
-					this.#dasTimer.restart();
+					this.#dasTimer.set(this.#config.das);
 				} else {
 					this.#dasDirection = null;
 					this.#dasTimer.stop();
@@ -368,11 +385,11 @@ export class Engine {
 			case "startSoftdrop":
 				this.#fall();
 				this.#gravityTimer.stop();
-				this.#softdropTimer.restart();
+				this.#softdropTimer.set(this.#config.softdrop);
 				break;
 			case "stopSoftdrop":
 				this.#softdropTimer.stop();
-				this.#gravityTimer.restart();
+				this.#gravityTimer.set(this.#config.gravity);
 				break;
 		}
 	}
@@ -475,10 +492,7 @@ export class Engine {
 
 		this.#activePiece = piece;
 		this.#ghostPiece = this.#pile.calculateGhost(this.#activePiece);
-		this.#lowestY = Math.min(
-			this.#lowestY,
-			this.#activePiece.lowestY(),
-		);
+		this.#lowestY = Math.min(this.#lowestY, this.#activePiece.lowestY());
 
 		if (this.#lowestY < prevLowestY) {
 			this.#resetCounter = 0;
@@ -486,7 +500,7 @@ export class Engine {
 
 		if (!this.#activePiece.equals(prevPiece)) {
 			if (!this.#canFall()) {
-				this.#lockTimer.restart();
+				this.#lockTimer.set(this.#config.lock);
 			} else {
 				this.#lockTimer.stop();
 			}
@@ -567,14 +581,18 @@ export class GarbageRollbackEngine extends Engine {
 		super.update(inputs);
 		if (this.#pendingGarbage[this.frame] !== undefined) {
 			// someone hit us in the future, apply it now.
-			this.queueGarbage(this.#pendingGarbage[this.frame]!)
+			this.queueGarbage(this.#pendingGarbage[this.frame]!);
 		}
 		this.#rollbackInputs.push(inputs.slice());
 		if (this.#rollbackInputs.length > 60) {
 			this.#rollbackEngine.update(this.#rollbackInputs.shift()!);
-			if (this.#pendingGarbage[this.#rollbackEngine.frame] !== undefined) {
+			if (
+				this.#pendingGarbage[this.#rollbackEngine.frame] !== undefined
+			) {
 				// the past entry must be applied and deleted.
-				this.#rollbackEngine.queueGarbage(this.#pendingGarbage[this.#rollbackEngine.frame]!);
+				this.#rollbackEngine.queueGarbage(
+					this.#pendingGarbage[this.#rollbackEngine.frame]!,
+				);
 				delete this.#pendingGarbage[this.#rollbackEngine.frame];
 			}
 		}
@@ -940,22 +958,17 @@ class PieceGenerator {
 }
 
 type SerializedTimer = {
-	timeout: number;
 	remaining: number;
 };
 
 class Timer {
-	#timeout: number;
 	#remaining: number = 0;
 
-	constructor(timeout: number) {
-		this.#timeout = timeout;
-	}
+	constructor() {}
 
 	static deserialize(state: SerializedTimer): Timer {
-		const timer = new Timer(0);
+		const timer = new Timer();
 
-		timer.#timeout = state.timeout;
 		timer.#remaining = state.remaining;
 
 		return timer;
@@ -963,12 +976,11 @@ class Timer {
 
 	serialize(): SerializedTimer {
 		return {
-			timeout: this.#timeout,
 			remaining: this.#remaining,
 		};
 	}
 
-	tick() {
+	tick(): boolean {
 		if (this.#remaining <= 0) {
 			return false;
 		}
@@ -979,8 +991,8 @@ class Timer {
 		return false;
 	}
 
-	restart() {
-		this.#remaining = this.#timeout;
+	set(remaining: number) {
+		this.#remaining = remaining;
 	}
 
 	stop() {
