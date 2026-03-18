@@ -394,7 +394,8 @@ export class Engine {
 		}
 
 		this.#pile.addPiece(this.#ghostPiece);
-		this.#attack = this.#pile.lastLinesCleared;
+		const linesCleared = this.#pile.clearLines();
+		this.#attack = linesCleared;
 		for (const lines of this.#garbageQueue) {
 			this.#pile.addGarbage({
 				height: lines,
@@ -751,12 +752,10 @@ function kickOffset(type: PieceType, rotation: Rotation, n: number): Coords {
 
 type SerializedPile = {
 	rows: Cell[][];
-	lastLinesCleared: number;
 };
 
 class Pile {
 	#rows: Cell[][] = [];
-	#lastLinesCleared = 0;
 
 	constructor() {
 		for (let i = 0; i < PILE_HEIGHT; i++) {
@@ -768,7 +767,6 @@ class Pile {
 		const pile = new Pile();
 
 		pile.#rows = state.rows;
-		pile.#lastLinesCleared = state.lastLinesCleared;
 
 		return pile;
 	}
@@ -776,7 +774,6 @@ class Pile {
 	serialize(): SerializedPile {
 		return {
 			rows: structuredClone(this.#rows),
-			lastLinesCleared: this.#lastLinesCleared,
 		};
 	}
 
@@ -807,9 +804,10 @@ class Pile {
 		for (const [x, y] of piece.blocks) {
 			this.#rows[y]![x] = piece.type;
 		}
+	}
 
-		this.#lastLinesCleared = 0;
-
+	clearLines(): number {
+		let count = 0;
 		for (let i = PILE_HEIGHT - 1; i >= 0; i--) {
 			let full = true;
 			for (let j = 0; j < PILE_WIDTH; j++) {
@@ -820,9 +818,10 @@ class Pile {
 			if (full) {
 				this.#rows.splice(i, 1);
 				this.#rows.push(this.#emptyRow());
-				this.#lastLinesCleared++;
+				count++;
 			}
 		}
+		return count;
 	}
 
 	calculateGhost(piece: Piece): Piece {
@@ -849,10 +848,6 @@ class Pile {
 
 	get rows(): readonly (readonly Cell[])[] {
 		return this.#rows;
-	}
-
-	get lastLinesCleared(): number {
-		return this.#lastLinesCleared;
 	}
 }
 
