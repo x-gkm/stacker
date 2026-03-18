@@ -76,7 +76,8 @@ impl PieceKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Cell {
-    #[default] Empty,
+    #[default]
+    Empty,
     PieceKind(PieceKind),
     Garbage,
 }
@@ -709,36 +710,19 @@ impl Pile {
         Pile([[Cell::Empty; PILE_WIDTH]; PILE_HEIGHT])
     }
 
+    fn is_row_full(&self, row: usize) -> bool {
+        self.0[row].iter().all(|&cell| cell != Cell::Empty)
+    }
+
     fn lines_to_clear(&self) -> i32 {
-        let mut count = 0;
-        for row in self.0 {
-            let mut full = true;
-            for cell in row {
-                if cell == Cell::Empty {
-                    full = false;
-                    break;
-                }
-            }
-
-            if full {
-                count += 1;
-            }
-        }
-
-        count
+        (0..PILE_HEIGHT)
+            .filter(|&row| self.is_row_full(row))
+            .count() as i32
     }
 
     fn line_clear(&mut self) {
         for row in (0..PILE_HEIGHT).rev() {
-            let mut full = true;
-            for &cell in &self.0[row] {
-                if cell == Cell::Empty {
-                    full = false;
-                    break;
-                }
-            }
-
-            if !full {
+            if !self.is_row_full(row) {
                 continue;
             }
 
