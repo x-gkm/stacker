@@ -13,7 +13,7 @@ Things left to implement:
 - [x] Forced lock
 - [x] Block out
 - [x] Top out
-- [ ] Back to back
+- [x] Back to back
 - [ ] Combos
 - [ ] T-spins
 - [ ] Spawn delay

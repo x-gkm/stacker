@@ -150,6 +150,7 @@ export type SerializedEngine = {
 	garbageRngState: number[];
 	garbageQueue: number[];
 	attack: number;
+	backToBack: number | null;
 };
 
 export class Engine {
@@ -174,6 +175,7 @@ export class Engine {
 	#garbageRng: RNG;
 	#garbageQueue: number[] = [];
 	#attack: number = 0;
+	#backToBack: number | null = null;
 
 	constructor(seed: number) {
 		this.#generator = new PieceGenerator(seed);
@@ -217,6 +219,7 @@ export class Engine {
 			garbageRngState: this.#garbageRng.getState().slice(),
 			garbageQueue: this.#garbageQueue.slice(),
 			attack: this.#attack,
+			backToBack: this.#backToBack,
 		};
 	}
 
@@ -242,6 +245,7 @@ export class Engine {
 		this.#garbageRng = new RNG(state.garbageRngState);
 		this.#garbageQueue = state.garbageQueue;
 		this.#attack = state.attack;
+		this.#backToBack = state.backToBack;
 	}
 
 	static deserialize(state: SerializedEngine): Engine {
@@ -396,6 +400,16 @@ export class Engine {
 		this.#pile.addPiece(this.#ghostPiece);
 		const linesCleared = this.#pile.clearLines();
 		this.#attack = linesCleared;
+		if (linesCleared === 4) {
+			if (typeof this.#backToBack === "number") {
+				this.#backToBack++;
+			} else {
+				this.#backToBack = 0;
+			}
+		} else if (linesCleared != 0) {
+			this.#backToBack = null;
+		}
+
 		for (const lines of this.#garbageQueue) {
 			this.#pile.addGarbage({
 				height: lines,
@@ -509,6 +523,10 @@ export class Engine {
 
 	get attack(): number {
 		return this.#attack;
+	}
+
+	get backToBack(): number {
+		return this.#backToBack ?? 0;
 	}
 }
 

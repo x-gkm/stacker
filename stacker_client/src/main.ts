@@ -156,6 +156,10 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 		);
 		garbageOffset += garbage;
 	}
+
+	ctx.fillStyle = "#ffffff";
+	ctx.font = "50px sans-serif";
+	ctx.fillText(`back-to-back: ${engine.backToBack}`, 0, 50);
 }
 
 function resetAll() {
