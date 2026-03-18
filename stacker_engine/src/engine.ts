@@ -160,7 +160,6 @@ export type SerializedEngine = {
 	moveRight: boolean;
 	dasDirection: "left" | "right" | null;
 	dasTimer: SerializedTimer;
-	arrTimer: SerializedTimer;
 	lockTimer: SerializedTimer;
 	resetCounter: number;
 	gameOver: boolean;
@@ -187,7 +186,6 @@ export class Engine {
 	#moveRight = false;
 	#dasDirection: "left" | "right" | null = null;
 	#dasTimer = new Timer();
-	#arrTimer = new Timer();
 	#lockTimer = new Timer();
 	#resetCounter: number;
 	#gameOver = false;
@@ -230,7 +228,6 @@ export class Engine {
 			moveRight: this.#moveRight,
 			dasDirection: this.#dasDirection,
 			dasTimer: this.#dasTimer.serialize(),
-			arrTimer: this.#arrTimer.serialize(),
 			lockTimer: this.#lockTimer.serialize(),
 			resetCounter: this.#resetCounter,
 			gameOver: this.#gameOver,
@@ -258,7 +255,6 @@ export class Engine {
 		this.#moveRight = state.moveRight;
 		this.#dasDirection = state.dasDirection;
 		this.#dasTimer = Timer.deserialize(state.dasTimer);
-		this.#arrTimer = Timer.deserialize(state.arrTimer);
 		this.#lockTimer = Timer.deserialize(state.lockTimer);
 		this.#resetCounter = state.resetCounter;
 		this.#gameOver = state.gameOver;
@@ -300,14 +296,22 @@ export class Engine {
 			this.#softdropTimer.set(this.#config.softdrop);
 		}
 
-		if (this.#dasTimer.tick()) {
-			this.#arrTimer.set(this.#config.arr);
-		}
-
-		if (this.#arrTimer.tick()) {
-			if (this.#dasDirection !== null) {
-				this.#move(this.#dasDirection);
-				this.#arrTimer.set(this.#config.arr);
+		if (this.#dasTimer.tick() && this.#dasDirection !== null) {
+			this.#move(this.#dasDirection);
+			if (this.#config.arr !== 0) {
+				this.#dasTimer.set(this.#config.arr);
+			} else {
+				this.#dasTimer.set(1);
+				while (true) {
+					const branched = this.#activePiece.changedBy(
+						this.#dasDirection === "right" ? 1 : -1,
+						0,
+					);
+					if (this.#pile.hasOverlap(branched.blocks)) {
+						break;
+					}
+					this.#setActive(branched);
+				}
 			}
 		}
 
@@ -351,14 +355,12 @@ export class Engine {
 				this.#move("left");
 				this.#dasDirection = "left";
 				this.#dasTimer.set(this.#config.das);
-				this.#arrTimer.stop();
 				break;
 			case "startMoveRight":
 				this.#moveRight = true;
 				this.#move("right");
 				this.#dasDirection = "right";
 				this.#dasTimer.set(this.#config.das);
-				this.#arrTimer.stop();
 				break;
 			case "stopMoveLeft":
 				this.#moveLeft = false;
@@ -369,7 +371,6 @@ export class Engine {
 					this.#dasDirection = null;
 					this.#dasTimer.stop();
 				}
-				this.#arrTimer.stop();
 				break;
 			case "stopMoveRight":
 				this.#moveRight = false;
@@ -380,7 +381,6 @@ export class Engine {
 					this.#dasDirection = null;
 					this.#dasTimer.stop();
 				}
-				this.#arrTimer.stop();
 				break;
 			case "startSoftdrop":
 				this.#fall();
