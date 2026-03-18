@@ -112,6 +112,10 @@ export class Piece {
 		return true;
 	}
 
+	lowestY(): number {
+		return Math.min(...this.#blocks.map(([_, y]) => y));
+	}
+
 	get type(): PieceType {
 		return this.#type;
 	}
@@ -174,9 +178,7 @@ export class Engine {
 		this.#generator = new PieceGenerator(seed);
 
 		this.#activePiece = Piece.spawn(this.#generator.pull().type);
-		this.#lowestY = Math.min(
-			...this.#activePiece.blocks.map(([_, y]) => y),
-		);
+		this.#lowestY = this.#activePiece.lowestY();
 		this.#ghostPiece = this.#pile.calculateGhost(this.#activePiece);
 
 		this.#gravityTimer = new Timer(60);
@@ -429,9 +431,7 @@ export class Engine {
 			this.#gameOver = true;
 			return;
 		}
-		this.#lowestY = Math.min(
-			...this.#activePiece.blocks.map(([_, y]) => y),
-		);
+		this.#lowestY = this.#activePiece.lowestY();
 	}
 
 	#setActive(piece: Piece) {
@@ -442,7 +442,7 @@ export class Engine {
 		this.#ghostPiece = this.#pile.calculateGhost(this.#activePiece);
 		this.#lowestY = Math.min(
 			this.#lowestY,
-			...this.#activePiece.blocks.map(([_, y]) => y),
+			this.#activePiece.lowestY(),
 		);
 
 		if (this.#lowestY < prevLowestY) {
