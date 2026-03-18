@@ -158,10 +158,28 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 	}
 
 	ctx.fillStyle = "#ffffff";
-	ctx.font = "50px sans-serif";
+	ctx.font = BLOCK_SIZE + "px sans-serif";
 
-	ctx.fillText(`back-to-back: ${engine.backToBack}`, 0, 50);
-	ctx.fillText(`combo: ${engine.combo}`, 0, 100);
+	if (engine.backToBack > 0) {
+		const text = `${engine.backToBack}x b2b`;
+		const width = ctx.measureText(text).width;
+		ctx.fillText(
+			text,
+			boardOriginX - width - BLOCK_SIZE,
+			boardOriginY - BLOCK_SIZE * 15,
+		);
+	}
+
+	if (engine.combo > 0) {
+		const text = `${engine.combo}x combo`;
+
+		const width = ctx.measureText(text).width;
+		ctx.fillText(
+			text,
+			boardOriginX - width - BLOCK_SIZE,
+			boardOriginY - BLOCK_SIZE * 14,
+		);
+	}
 }
 
 function resetAll() {
