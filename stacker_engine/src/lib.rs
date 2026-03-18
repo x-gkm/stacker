@@ -162,6 +162,7 @@ impl NextQueue {
 
         result
     }
+
     fn pull(&mut self) -> PieceKind {
         let result = self.pieces.pop_front().unwrap();
         if self.pieces.len() < 5 {
@@ -169,6 +170,7 @@ impl NextQueue {
         }
         result
     }
+
     fn add_bag(&mut self) {
         use PieceKind::*;
         let mut bag = [I, J, L, O, S, T, Z];
