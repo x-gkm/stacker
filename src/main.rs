@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use macroquad::prelude::*;
 use stacker_engine::{
-    Action, Direction, Engine, GRID_HEIGHT, GameConfig, HoldPiece, Input, Orientation, PILE_WIDTH,
-    PieceKind,
+    Action, Cell, Direction, Engine, GRID_HEIGHT, GameConfig, HoldPiece, Input, Orientation,
+    PILE_WIDTH, PieceKind,
 };
 
 const BLOCK_SIZE: f32 = 25.;
@@ -32,6 +32,10 @@ async fn main() {
 
         handle_input(&mut inputs);
 
+        if is_key_pressed(KeyCode::P) {
+            engine.queue_garbage(5);
+        }
+
         while residue >= 1.0 / 60.0 {
             engine.update(&inputs);
             inputs.clear();
@@ -48,7 +52,7 @@ async fn main() {
                 let block_x = offset_x + x as f32 * BLOCK_SIZE;
                 let block_y = offset_y + (GRID_HEIGHT - y as i32 - 1) as f32 * BLOCK_SIZE;
 
-                if let Some(piece) = block {
+                if let Cell::PieceKind(piece) = block {
                     draw_rectangle(
                         block_x,
                         block_y,
@@ -59,6 +63,14 @@ async fn main() {
                         } else {
                             DARKGRAY
                         },
+                    );
+                } else if block == Cell::Garbage {
+                    draw_rectangle(
+                        block_x,
+                        block_y,
+                        BLOCK_SIZE,
+                        BLOCK_SIZE,
+                        GRAY,
                     );
                 } else if y < GRID_HEIGHT as usize {
                     draw_rectangle_lines(block_x, block_y, BLOCK_SIZE, BLOCK_SIZE, 1., GRAY);
@@ -125,7 +137,13 @@ async fn main() {
         }
 
         draw_text(&format!("combo: {}", engine.combo()), 0., 100., 30., BLACK);
-        draw_text(&format!("back-to-back: {}", engine.back_to_back()), 0., 150., 30., BLACK);
+        draw_text(
+            &format!("back-to-back: {}", engine.back_to_back()),
+            0.,
+            150.,
+            30.,
+            BLACK,
+        );
 
         prev_time = time;
         next_frame().await;
