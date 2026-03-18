@@ -12,6 +12,7 @@ Things left to implement:
 - [x] Hold
 - [x] Forced lock
 - [x] Block out
+- [x] Top out
 - [ ] Back to back
 - [ ] Combos
 - [ ] T-spins

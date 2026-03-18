@@ -19,6 +19,7 @@ export type Rotation = 0 | 1 | 2 | 3;
 
 export const PILE_WIDTH = 10;
 export const PILE_HEIGHT = 40;
+export const BOARD_HEIGHT = 20;
 
 export const ENGINE_FPS = 60;
 
@@ -387,6 +388,11 @@ export class Engine {
 	}
 
 	#lockGhost() {
+		if (this.#ghostPiece.lowestY() >= BOARD_HEIGHT) {
+			this.#gameOver = true;
+			return;
+		}
+
 		this.#pile.addPiece(this.#ghostPiece);
 		this.#attack = this.#pile.lastLinesCleared;
 		for (const lines of this.#garbageQueue) {

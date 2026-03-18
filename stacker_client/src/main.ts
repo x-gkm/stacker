@@ -1,4 +1,5 @@
 import {
+	BOARD_HEIGHT,
 	Engine,
 	ENGINE_FPS,
 	GarbageRollbackEngine,
@@ -13,7 +14,6 @@ const stacker = document.querySelector("#stacker") as HTMLCanvasElement;
 stacker.width = window.innerWidth;
 stacker.height = window.innerHeight;
 
-const BOARD_HEIGHT = 20;
 const BLOCK_SIZE = 20;
 
 window.addEventListener("resize", () => {
