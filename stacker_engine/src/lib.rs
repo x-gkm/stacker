@@ -2,7 +2,7 @@
 
 use heapless::Deque;
 
-use rand::{SeedableRng, seq::SliceRandom};
+use rand::{RngExt, SeedableRng, seq::SliceRandom};
 use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
 
@@ -74,7 +74,12 @@ impl PieceKind {
     }
 }
 
-pub type Cell = Option<PieceKind>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum Cell {
+    #[default] Empty,
+    PieceKind(PieceKind),
+    Garbage,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Orientation {
@@ -243,6 +248,8 @@ pub struct Engine {
     frame_outcome: FrameOutcome,
     last_input_was_rotate: bool,
     buffered_inputs: BufferedInputs,
+    garbage_rng: ChaChaRng,
+    garbage_queue: Deque<i32, 40>,
 }
 
 impl Engine {
@@ -278,6 +285,8 @@ impl Engine {
             frame_outcome: FrameOutcome { tspin: false },
             last_input_was_rotate: false,
             buffered_inputs: Default::default(),
+            garbage_rng: ChaChaRng::seed_from_u64(seed),
+            garbage_queue: Deque::new(),
         }
     }
 
@@ -316,7 +325,7 @@ impl Engine {
         }
 
         for (x, y) in ghost_piece.blocks {
-            self.pile.0[y as usize][x as usize] = Some(ghost_piece.kind)
+            self.pile.0[y as usize][x as usize] = Cell::PieceKind(ghost_piece.kind)
         }
         let lines_to_clear = self.pile.lines_to_clear();
 
@@ -362,6 +371,15 @@ impl Engine {
             spawn_delay = self.config.are;
 
             self.combo = None;
+        }
+
+        if !self.garbage_queue.is_empty() {
+            for &lines in &self.garbage_queue {
+                let column = self.garbage_rng.random_range(0..10);
+                self.pile.push_garbage(lines, column);
+            }
+
+            self.garbage_queue.clear();
         }
 
         if spawn_delay > 0 {
@@ -523,6 +541,11 @@ impl Engine {
         self.spawn(piece);
     }
 
+    pub fn queue_garbage(&mut self, lines: i32) {
+        // If we can't queue more garbage they are dead already so don't bother.
+        let _ = self.garbage_queue.push_back(lines);
+    }
+
     pub fn update(&mut self, frame_inputs: &[Input]) {
         self.frame_outcome = Default::default();
 
@@ -669,6 +692,10 @@ impl Engine {
         self.frame
     }
 
+    pub fn garbage_queue(&self) -> impl Iterator<Item = i32> {
+        self.garbage_queue.iter().copied()
+    }
+
     pub fn game_over(&self) -> bool {
         self.game_over
     }
@@ -679,7 +706,7 @@ struct Pile(#[serde(with = "serde_big_array::BigArray")] [[Cell; PILE_WIDTH]; PI
 
 impl Pile {
     fn new() -> Pile {
-        Pile([[None; PILE_WIDTH]; PILE_HEIGHT])
+        Pile([[Cell::Empty; PILE_WIDTH]; PILE_HEIGHT])
     }
 
     fn lines_to_clear(&self) -> i32 {
@@ -687,7 +714,7 @@ impl Pile {
         for row in self.0 {
             let mut full = true;
             for cell in row {
-                if cell.is_none() {
+                if cell == Cell::Empty {
                     full = false;
                     break;
                 }
@@ -704,8 +731,8 @@ impl Pile {
     fn line_clear(&mut self) {
         for row in (0..PILE_HEIGHT).rev() {
             let mut full = true;
-            for cell in &self.0[row] {
-                if cell.is_none() {
+            for &cell in &self.0[row] {
+                if cell == Cell::Empty {
                     full = false;
                     break;
                 }
@@ -722,7 +749,7 @@ impl Pile {
             }
 
             for cell in 0..PILE_WIDTH {
-                self.0[PILE_HEIGHT - 1][cell] = None;
+                self.0[PILE_HEIGHT - 1][cell] = Cell::Empty;
             }
         }
     }
@@ -732,7 +759,7 @@ impl Pile {
     }
 
     fn has_block(&self, x: i32, y: i32) -> bool {
-        self.0[y as usize][x as usize].is_some()
+        self.0[y as usize][x as usize] != Cell::Empty
     }
 
     fn check_collision(&self, blocks: &[Coords]) -> bool {
@@ -761,6 +788,23 @@ impl Pile {
         }
 
         count >= 3
+    }
+
+    fn push_garbage(&mut self, lines: i32, column: i32) {
+        for y in (0..PILE_HEIGHT - lines as usize).rev() {
+            for x in 0..PILE_WIDTH {
+                self.0[y + lines as usize][x] = self.0[y][x]
+            }
+        }
+        for y in 0..lines as usize {
+            for x in 0..PILE_WIDTH {
+                if x != column as usize {
+                    self.0[y][x] = Cell::Garbage;
+                } else {
+                    self.0[y][x] = Cell::Empty;
+                }
+            }
+        }
     }
 }
 

@@ -20,7 +20,7 @@ Things left to implement:
 - [x] Back to back
 - [x] T-spins
 - [x] Input buffering
-- [ ] Garbage
+- [x] Garbage
 - [ ] Add support for drawing multiple boards
 - [ ] Multiplayer server
 - [ ] Implement rollback
