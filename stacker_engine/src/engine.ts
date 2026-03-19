@@ -158,6 +158,8 @@ type Garbage = { height: number; column: number };
 export type FrameOutcome = {
 	linesCleared: number;
 	tspin: boolean;
+	cancelled: number;
+	attack: number;
 };
 
 export type SerializedEngine = {
@@ -208,7 +210,7 @@ export class Engine {
 	#gameOver = false;
 	#garbageRng: RNG;
 	#garbageQueue: PendingGarbage[] = [];
-	#frameOutcome: FrameOutcome = { linesCleared: 0, tspin: false };
+	#frameOutcome: FrameOutcome = { linesCleared: 0, tspin: false, cancelled: 0, attack: 0 };
 	#backToBack: number | null = null;
 	#combo: number | null = null;
 	#lastInputWasRotate = false;
@@ -300,6 +302,8 @@ export class Engine {
 	update(inputs: Input[]): FrameOutcome {
 		this.#frameOutcome.linesCleared = 0;
 		this.#frameOutcome.tspin = false;
+		this.#frameOutcome.cancelled = 0;
+		this.#frameOutcome.attack = 0;
 
 		if (this.#gameOver) {
 			return this.#frameOutcome;
@@ -476,17 +480,31 @@ export class Engine {
 			this.#combo = null;
 		}
 
-		for (const garbage of this.#garbageQueue) {
-			if (garbage.remaining > 0) {
-				continue;
-			}
+		const attack = calculateAttack({ backToBack: this.#backToBack ?? 0, combo: this.#combo ?? 0, linesCleared, tspin });
 
-			this.#pile.addGarbage({
-				height: garbage.lines,
-				column: this.#garbageRng.nextInt(0, 10),
-			});
+		if (linesCleared > 0) {
+			let maxLinesToCancel = attack;
+			for (const garbage of this.#garbageQueue) {
+				const cancelled = Math.min(garbage.lines, maxLinesToCancel);
+				garbage.lines -= cancelled;
+				maxLinesToCancel -= cancelled;
+				this.#frameOutcome.cancelled += cancelled;
+			}
+			this.#garbageQueue = this.#garbageQueue.filter(garbage => garbage.lines > 0);
+		} else {
+			for (const garbage of this.#garbageQueue) {
+				if (garbage.remaining > 0) {
+					continue;
+				}
+
+				this.#pile.addGarbage({
+					height: garbage.lines,
+					column: this.#garbageRng.nextInt(0, 10),
+				});
+			}
+			this.#garbageQueue = this.#garbageQueue.filter(garbage => garbage.remaining > 0);
 		}
-		this.#garbageQueue = this.#garbageQueue.filter(garbage => garbage.remaining > 0);
+		this.#frameOutcome.attack = attack - this.#frameOutcome.cancelled;
 		this.#spawn();
 		this.#holdLocked = false;
 	}
@@ -678,6 +696,53 @@ export class GarbageRollbackEngine extends Engine {
 		}
 		this.deserializeInPlace(rolling.serialize());
 	}
+}
+
+function calculateAttack({
+	backToBack,
+	combo,
+	linesCleared,
+	tspin,
+}: {
+	backToBack: number;
+	combo: number;
+	linesCleared: number;
+	tspin: boolean;
+}): number {
+	if (linesCleared <= 0) {
+		return 0;
+	}
+
+	let result = 0;
+
+	switch (linesCleared) {
+		case 1:
+			result = 0;
+			break;
+		case 2:
+			result = 1;
+			break;
+		case 3:
+			result = 2;
+			break;
+		case 4:
+			result = 4;
+			break;
+	}
+
+	if (tspin) {
+		result = linesCleared * 2;
+	}
+
+	if (backToBack > 0) {
+		result += 1;
+	}
+
+	if (combo > 1) {
+		result += Math.floor(Math.sqrt(combo));
+	}
+
+	return result;
 }
 
 const NORTH_PIECES: Record<PieceType, Coords[]> = {

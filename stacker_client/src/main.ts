@@ -215,8 +215,8 @@ socket.addEventListener("message", msg => {
 		case "opponentData":
 			const opponent = opponents[obj.id];
 			const frameOutcome = opponent.update(obj.data.inputs);
-			if (frameOutcome.linesCleared> 0) {
-				engine.addGarbage(opponent.frame, frameOutcome.linesCleared);
+			if (frameOutcome.attack > 0) {
+				engine.addGarbage(opponent.frame, frameOutcome.attack);
 			}
 	}
 });
@@ -254,9 +254,9 @@ function draw() {
 		}
 		inputs.length = 0;
 
-		if (frameOutcome.linesCleared > 0) {
+		if (frameOutcome.attack > 0) {
 			for (const opponent of Object.values(opponents)) {
-				opponent.addGarbage(engine.frame, frameOutcome.linesCleared);
+				opponent.addGarbage(engine.frame, frameOutcome.attack);
 			}
 		}
 	}

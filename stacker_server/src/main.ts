@@ -29,8 +29,8 @@ class Client {
 		this.#ws.on("message", msg => {
 			const data: ClientMessage = JSON.parse(msg.toString());
 			const frameOutcome = this.#engine.update(data.inputs);
-			if (frameOutcome.linesCleared > 0) {
-				this.#applyAttack(frameOutcome.linesCleared);
+			if (frameOutcome.attack > 0) {
+				this.#applyAttack(frameOutcome.attack);
 			}
 			this.#broadcast("opponentData", { data });
 		});
