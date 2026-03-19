@@ -291,6 +291,17 @@ document.addEventListener("keydown", ev => {
 		return;
 	}
 
+	if (ev.code === "KeyU") {
+		keymap.hold = "KeyZ";
+		keymap.flip = "KeyC";
+		keymap.rotateLeft = "KeyX";
+		keymap.rotateRight = "KeyV";
+		keymap.harddrop = "Space";
+		keymap.moveLeft = "ArrowLeft";
+		keymap.softdrop = "ArrowDown";
+		keymap.moveRight = "ArrowRight";
+	} 
+
 	if (ev.code === "KeyN") {
 		keymap.hold = "KeyC";
 		keymap.flip = "KeyA";
