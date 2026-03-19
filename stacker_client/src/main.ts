@@ -214,9 +214,9 @@ socket.addEventListener("message", msg => {
 			break;
 		case "opponentData":
 			const opponent = opponents[obj.id];
-			opponent.update(obj.data.inputs);
-			if (opponent.attack > 0) {
-				engine.addGarbage(opponent.frame, opponent.attack);
+			const frameOutcome = opponent.update(obj.data.inputs);
+			if (frameOutcome.linesCleared> 0) {
+				engine.addGarbage(opponent.frame, frameOutcome.linesCleared);
 			}
 	}
 });
@@ -245,7 +245,7 @@ function draw() {
 	while (residueTime >= 1000 / ENGINE_FPS) {
 		residueTime -= 1000 / ENGINE_FPS;
 
-		engine.update(inputs);
+		const frameOutcome = engine.update(inputs);
 		const command = { inputs } as const;
 		if (socket.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(command));
@@ -254,9 +254,9 @@ function draw() {
 		}
 		inputs.length = 0;
 
-		if (engine.attack > 0) {
+		if (frameOutcome.linesCleared > 0) {
 			for (const opponent of Object.values(opponents)) {
-				opponent.addGarbage(engine.frame, engine.attack);
+				opponent.addGarbage(engine.frame, frameOutcome.linesCleared);
 			}
 		}
 	}

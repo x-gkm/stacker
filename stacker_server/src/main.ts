@@ -28,9 +28,9 @@ class Client {
 
 		this.#ws.on("message", msg => {
 			const data: ClientMessage = JSON.parse(msg.toString());
-			this.#engine.update(data.inputs);
-			if (this.#engine.attack > 0) {
-				this.#applyAttack();
+			const frameOutcome = this.#engine.update(data.inputs);
+			if (frameOutcome.linesCleared > 0) {
+				this.#applyAttack(frameOutcome.linesCleared);
 			}
 			this.#broadcast("opponentData", { data });
 		});
@@ -57,13 +57,13 @@ class Client {
 		}
 	}
 
-	#applyAttack() {
+	#applyAttack(lines: number) {
 		for (const client of Object.values(Client.#clients)) {
 			if (client.#id === this.#id) {
 				continue;
 			}
 
-			client.#engine.addGarbage(this.#engine.frame, this.#engine.attack);
+			client.#engine.addGarbage(this.#engine.frame, lines);
 		}
 	}
 

@@ -147,6 +147,10 @@ export class Piece {
 export type PendingGarbage = { lines: number, remaining: number };
 type Garbage = { height: number; column: number };
 
+export type FrameOutcome = {
+	linesCleared: number;
+};
+
 export type SerializedEngine = {
 	config: Config;
 	frame: number;
@@ -168,7 +172,7 @@ export type SerializedEngine = {
 	gameOver: boolean;
 	garbageRngState: number[];
 	garbageQueue: PendingGarbage[];
-	attack: number;
+	frameOutcome: FrameOutcome;
 	backToBack: number | null;
 	combo: number | null;
 };
@@ -194,7 +198,7 @@ export class Engine {
 	#gameOver = false;
 	#garbageRng: RNG;
 	#garbageQueue: PendingGarbage[] = [];
-	#attack = 0;
+	#frameOutcome: FrameOutcome = { linesCleared: 0 };
 	#backToBack: number | null = null;
 	#combo: number | null = null;
 
@@ -236,7 +240,7 @@ export class Engine {
 			gameOver: this.#gameOver,
 			garbageRngState: this.#garbageRng.getState().slice(),
 			garbageQueue: structuredClone(this.#garbageQueue),
-			attack: this.#attack,
+			frameOutcome: structuredClone(this.#frameOutcome),
 			backToBack: this.#backToBack,
 			combo: this.combo,
 		};
@@ -263,7 +267,7 @@ export class Engine {
 		this.#gameOver = state.gameOver;
 		this.#garbageRng = new RNG(state.garbageRngState);
 		this.#garbageQueue = state.garbageQueue;
-		this.#attack = state.attack;
+		this.#frameOutcome = state.frameOutcome;
 		this.#backToBack = state.backToBack;
 		this.#combo = state.combo;
 	}
@@ -280,11 +284,11 @@ export class Engine {
 		this.#garbageQueue.push({ lines, remaining: this.#config.garbageEntry });
 	}
 
-	update(inputs: Input[]) {
-		this.#attack = 0;
+	update(inputs: Input[]): FrameOutcome {
+		this.#frameOutcome.linesCleared = 0;
 
 		if (this.#gameOver) {
-			return;
+			return this.#frameOutcome;
 		}
 
 		this.#frame++;
@@ -333,6 +337,8 @@ export class Engine {
 		for (const input of inputs) {
 			this.#handleInput(input);
 		}
+
+		return this.#frameOutcome;
 	}
 
 	#handleInput(input: Input) {
@@ -431,7 +437,7 @@ export class Engine {
 
 		this.#pile.addPiece(this.#ghostPiece);
 		const linesCleared = this.#pile.clearLines();
-		this.#attack = linesCleared;
+		this.#frameOutcome = { linesCleared };
 		if (linesCleared === 4) {
 			if (typeof this.#backToBack === "number") {
 				this.#backToBack++;
@@ -564,10 +570,6 @@ export class Engine {
 		return this.#garbageQueue;
 	}
 
-	get attack(): number {
-		return this.#attack;
-	}
-
 	get backToBack(): number {
 		return this.#backToBack ?? 0;
 	}
@@ -592,8 +594,7 @@ export class GarbageRollbackEngine extends Engine {
 		this.#rollbackEngine = new Engine(seed);
 	}
 
-	update(inputs: Input[]): void {
-		super.update(inputs);
+	update(inputs: Input[]): FrameOutcome {
 		if (this.#pendingGarbage[this.frame] !== undefined) {
 			// someone hit us in the future, apply it now.
 			this.queueGarbage(this.#pendingGarbage[this.frame]!);
@@ -611,6 +612,7 @@ export class GarbageRollbackEngine extends Engine {
 				delete this.#pendingGarbage[this.#rollbackEngine.frame];
 			}
 		}
+		return super.update(inputs);
 	}
 
 	serialize(): SerializedGarbageRollbackEngine {
