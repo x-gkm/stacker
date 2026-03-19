@@ -142,6 +142,14 @@ export class Piece {
 	get blocks(): Coords[] {
 		return this.#blocks;
 	}
+
+	get x(): number {
+		return this.#coords[0];
+	}
+
+	get y(): number {
+		return this.#coords[1];
+	}
 }
 
 export type PendingGarbage = { lines: number, remaining: number };
@@ -149,6 +157,7 @@ type Garbage = { height: number; column: number };
 
 export type FrameOutcome = {
 	linesCleared: number;
+	tspin: boolean;
 };
 
 export type SerializedEngine = {
@@ -175,6 +184,7 @@ export type SerializedEngine = {
 	frameOutcome: FrameOutcome;
 	backToBack: number | null;
 	combo: number | null;
+	lastInputWasRotate: boolean;
 };
 
 export class Engine {
@@ -198,9 +208,10 @@ export class Engine {
 	#gameOver = false;
 	#garbageRng: RNG;
 	#garbageQueue: PendingGarbage[] = [];
-	#frameOutcome: FrameOutcome = { linesCleared: 0 };
+	#frameOutcome: FrameOutcome = { linesCleared: 0, tspin: false };
 	#backToBack: number | null = null;
 	#combo: number | null = null;
+	#lastInputWasRotate = false;
 
 	constructor(seed: number, config: Config = DEFAULT_CONFIG) {
 		this.#config = config;
@@ -243,6 +254,7 @@ export class Engine {
 			frameOutcome: structuredClone(this.#frameOutcome),
 			backToBack: this.#backToBack,
 			combo: this.combo,
+			lastInputWasRotate: this.#lastInputWasRotate,
 		};
 	}
 
@@ -270,6 +282,7 @@ export class Engine {
 		this.#frameOutcome = state.frameOutcome;
 		this.#backToBack = state.backToBack;
 		this.#combo = state.combo;
+		this.#lastInputWasRotate = state.lastInputWasRotate;
 	}
 
 	static deserialize(state: SerializedEngine): Engine {
@@ -286,6 +299,7 @@ export class Engine {
 
 	update(inputs: Input[]): FrameOutcome {
 		this.#frameOutcome.linesCleared = 0;
+		this.#frameOutcome.tspin = false;
 
 		if (this.#gameOver) {
 			return this.#frameOutcome;
@@ -416,6 +430,7 @@ export class Engine {
 			const branched = this.#activePiece.changedBy(0, 0, rotation, i);
 			if (!this.#pile.hasOverlap(branched.blocks)) {
 				this.#setActive(branched);
+				this.#lastInputWasRotate = true;
 				break;
 			}
 		}
@@ -435,10 +450,13 @@ export class Engine {
 			return;
 		}
 
+		const tspin = this.#ghostPiece.type === 't' && this.#lastInputWasRotate && this.#pile.checkTspin(this.#ghostPiece);
+		this.#frameOutcome.tspin = tspin;
+
 		this.#pile.addPiece(this.#ghostPiece);
 		const linesCleared = this.#pile.clearLines();
-		this.#frameOutcome = { linesCleared };
-		if (linesCleared === 4) {
+		this.#frameOutcome.linesCleared = linesCleared;
+		if (linesCleared === 4 || (linesCleared > 0 && tspin)) {
 			if (typeof this.#backToBack === "number") {
 				this.#backToBack++;
 			} else {
@@ -532,6 +550,8 @@ export class Engine {
 		}
 
 		this.#resetCounter++;
+
+		this.#lastInputWasRotate = false; // Will be set to true by #rotate.
 	}
 
 	get frame(): number {
@@ -915,6 +935,25 @@ class Pile {
 			}
 			this.#rows.unshift(row);
 		}
+	}
+
+	checkTspin(piece: Piece): boolean {
+		const offsets = [
+			[1, 1],
+			[1, -1],
+			[-1, 1],
+			[-1, -1],
+		] as const;
+
+		let count = 0;
+
+		for (const [x, y] of offsets) {
+			if (this.hasOverlap([[piece.x + x, piece.y + y]])) {
+				count += 1;
+			}
+		}
+
+		return count >= 3;
 	}
 
 	get rows(): readonly (readonly Cell[])[] {

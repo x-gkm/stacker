@@ -16,7 +16,7 @@ Things left to implement:
 - [x] Back to back
 - [x] Combos
 - [x] 0 ARR support
-- [ ] T-spins
+- [x] T-spins
 - [ ] Spawn delay
 - [ ] Line clear delay
 - [ ] Input buffering
