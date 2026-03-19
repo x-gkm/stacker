@@ -29,6 +29,7 @@ export const DEFAULT_CONFIG: Config = {
 	gravity: 60,
 	softdrop: 1,
 	lock: 30,
+	garbageEntry: 20,
 };
 
 type Config = {
@@ -37,6 +38,7 @@ type Config = {
 	gravity: number;
 	softdrop: number;
 	lock: number;
+	garbageEntry: number;
 };
 
 type SerializedPiece = {
@@ -142,6 +144,7 @@ export class Piece {
 	}
 }
 
+export type PendingGarbage = { lines: number, remaining: number };
 type Garbage = { height: number; column: number };
 
 export type SerializedEngine = {
@@ -164,7 +167,7 @@ export type SerializedEngine = {
 	resetCounter: number;
 	gameOver: boolean;
 	garbageRngState: number[];
-	garbageQueue: number[];
+	garbageQueue: PendingGarbage[];
 	attack: number;
 	backToBack: number | null;
 	combo: number | null;
@@ -190,7 +193,7 @@ export class Engine {
 	#resetCounter: number;
 	#gameOver = false;
 	#garbageRng: RNG;
-	#garbageQueue: number[] = [];
+	#garbageQueue: PendingGarbage[] = [];
 	#attack = 0;
 	#backToBack: number | null = null;
 	#combo: number | null = null;
@@ -232,7 +235,7 @@ export class Engine {
 			resetCounter: this.#resetCounter,
 			gameOver: this.#gameOver,
 			garbageRngState: this.#garbageRng.getState().slice(),
-			garbageQueue: this.#garbageQueue.slice(),
+			garbageQueue: structuredClone(this.#garbageQueue),
 			attack: this.#attack,
 			backToBack: this.#backToBack,
 			combo: this.combo,
@@ -274,7 +277,7 @@ export class Engine {
 	}
 
 	queueGarbage(lines: number) {
-		this.#garbageQueue.push(lines);
+		this.#garbageQueue.push({ lines, remaining: this.#config.garbageEntry });
 	}
 
 	update(inputs: Input[]) {
@@ -317,6 +320,14 @@ export class Engine {
 
 		if (this.#lockTimer.tick()) {
 			this.#tryLock();
+		}
+
+		for (const garbage of this.#garbageQueue) {
+			if (garbage.remaining <= 0) {
+				continue;
+			}
+
+			garbage.remaining -= 1;
 		}
 
 		for (const input of inputs) {
@@ -441,13 +452,17 @@ export class Engine {
 			this.#combo = null;
 		}
 
-		for (const lines of this.#garbageQueue) {
+		for (const garbage of this.#garbageQueue) {
+			if (garbage.remaining > 0) {
+				continue;
+			}
+
 			this.#pile.addGarbage({
-				height: lines,
+				height: garbage.lines,
 				column: this.#garbageRng.nextInt(0, 10),
 			});
 		}
-		this.#garbageQueue.length = 0;
+		this.#garbageQueue = this.#garbageQueue.filter(garbage => garbage.remaining > 0);
 		this.#spawn();
 		this.#holdLocked = false;
 	}
@@ -545,7 +560,7 @@ export class Engine {
 		return this.#generator.next;
 	}
 
-	get garbageQueue(): number[] {
+	get garbageQueue(): PendingGarbage[] {
 		return this.#garbageQueue;
 	}
 

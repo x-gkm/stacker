@@ -142,19 +142,23 @@ function renderEngine(engine: Engine, nth: number, engineCount: number) {
 		}
 	}
 
-	ctx.fillStyle = "#c91d17";
 	let garbageOffset = 0;
 	for (let i = engine.garbageQueue.length - 1; i >= 0; i--) {
 		const garbage = engine.garbageQueue[i];
+		if (garbage.remaining > 0) {
+			ctx.fillStyle = "#461413";
+		} else {
+			ctx.fillStyle = "#c91d17";
+		}
 		const width = 10;
 		const gap = 2;
 		ctx.fillRect(
 			boardOriginX - width,
-			boardOriginY - (garbage + garbageOffset) * BLOCK_SIZE + gap,
+			boardOriginY - (garbage.lines + garbageOffset) * BLOCK_SIZE + gap,
 			width,
-			garbage * BLOCK_SIZE - gap,
+			garbage.lines * BLOCK_SIZE - gap,
 		);
-		garbageOffset += garbage;
+		garbageOffset += garbage.lines;
 	}
 
 	ctx.fillStyle = "#ffffff";
