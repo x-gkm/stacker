@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use macroquad::prelude::*;
 use stacker_engine::{
-    Action, Cell, Coords, Direction, Engine, GRID_HEIGHT, GameConfig, HoldPiece, Input, PILE_WIDTH,
+    Action, Cell, Coords, Direction, Engine, GRID_HEIGHT, Config, HoldPiece, Input, PILE_WIDTH,
     Piece, PieceKind,
 };
 
@@ -12,7 +12,7 @@ const BLOCK_SIZE: f32 = 25.;
 async fn main() {
     let mut engine = Engine::new(
         0,
-        GameConfig {
+        Config {
             das: 6,
             arr: 0,
             are: 0,
