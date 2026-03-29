@@ -52,7 +52,7 @@ async fn main() {
                 let block_x = offset_x + x as f32 * BLOCK_SIZE;
                 let block_y = offset_y + (GRID_HEIGHT - y as i32 - 1) as f32 * BLOCK_SIZE;
 
-                if let Cell::PieceKind(piece) = block {
+                if let Some(Cell::PieceKind(piece)) = block {
                     draw_rectangle(
                         block_x,
                         block_y,
@@ -64,7 +64,7 @@ async fn main() {
                             DARKGRAY
                         },
                     );
-                } else if block == Cell::Garbage {
+                } else if block == Some(Cell::Garbage) {
                     draw_rectangle(block_x, block_y, BLOCK_SIZE, BLOCK_SIZE, GRAY);
                 } else if y < GRID_HEIGHT as usize {
                     draw_rectangle_lines(block_x, block_y, BLOCK_SIZE, BLOCK_SIZE, 1., GRAY);
