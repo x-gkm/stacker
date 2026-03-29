@@ -2,7 +2,8 @@ use std::time::Instant;
 
 use macroquad::prelude::*;
 use stacker_engine::{
-    Action, Cell, Coords, Direction, Engine, GRID_HEIGHT, GameConfig, HoldPiece, Input, PILE_WIDTH, Piece, PieceKind
+    Action, Cell, Coords, Direction, Engine, GRID_HEIGHT, GameConfig, HoldPiece, Input, PILE_WIDTH,
+    Piece, PieceKind,
 };
 
 const BLOCK_SIZE: f32 = 25.;
@@ -64,21 +65,15 @@ async fn main() {
                         },
                     );
                 } else if block == Cell::Garbage {
-                    draw_rectangle(
-                        block_x,
-                        block_y,
-                        BLOCK_SIZE,
-                        BLOCK_SIZE,
-                        GRAY,
-                    );
+                    draw_rectangle(block_x, block_y, BLOCK_SIZE, BLOCK_SIZE, GRAY);
                 } else if y < GRID_HEIGHT as usize {
                     draw_rectangle_lines(block_x, block_y, BLOCK_SIZE, BLOCK_SIZE, 1., GRAY);
                 }
             }
         }
 
-        if let HoldPiece::Locked(piece) | HoldPiece::Unlocked(piece) = engine.hold() {
-            for (x, y) in piece_blocks(*piece) {
+        if let Some(HoldPiece { kind, is_locked }) = engine.hold() {
+            for (x, y) in piece_blocks(*kind) {
                 let x = offset_x + (x - 4) as f32 * BLOCK_SIZE;
                 let y = offset_y + (GRID_HEIGHT - y - 4 as i32 * 3 - 7) as f32 * BLOCK_SIZE;
 
@@ -87,10 +82,10 @@ async fn main() {
                     y,
                     BLOCK_SIZE,
                     BLOCK_SIZE,
-                    if let HoldPiece::Locked(..) = engine.hold() {
+                    if *is_locked {
                         GRAY
                     } else {
-                        piece_color(*piece)
+                        piece_color(*kind)
                     },
                 );
             }
