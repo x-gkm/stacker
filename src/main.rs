@@ -34,7 +34,7 @@ impl Default for Game {
                     are: 0,
                     gravity: 60,
                     softdrop: 0,
-                    clear_delay: 0,
+                    line_clear: 0,
                 },
             ),
             prev_time: Instant::now(),
