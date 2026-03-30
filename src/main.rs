@@ -28,6 +28,7 @@ impl Default for Game {
             engine: Engine::new(
                 0,
                 Config {
+                    spawn: 0,
                     das: 6,
                     arr: 0,
                     are: 0,
