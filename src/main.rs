@@ -193,7 +193,6 @@ struct MainMenu;
 impl Scene for MainMenu {
     async fn execute(&mut self) -> Box<dyn Scene> {
         loop {
-
             let mut clicked = false;
 
             egui_macroquad::ui(|ctx| {
@@ -202,11 +201,11 @@ impl Scene for MainMenu {
                 });
             });
 
+            egui_macroquad::draw();
+
             if clicked {
                 return Box::new(Game::default());
             }
-
-            egui_macroquad::draw();
 
             next_frame().await;
         }
