@@ -172,20 +172,14 @@ impl Scene for Game {
                 }
             }
 
-            draw_text(
-                &format!("combo: {}", self.engine.combo()),
-                0.,
-                100.,
-                30.,
-                BLACK,
-            );
-            draw_text(
-                &format!("back-to-back: {}", self.engine.back_to_back()),
-                0.,
-                150.,
-                30.,
-                BLACK,
-            );
+            egui_macroquad::ui(|ctx| {
+                egui::Window::new("Stats").show(ctx, |ui| {
+                    ui.label(format!("combo: {}", self.engine.combo()));
+                    ui.label(format!("back-to-back: {}", self.engine.back_to_back()));
+                });
+            });
+
+            egui_macroquad::draw();
 
             self.prev_time = time;
             next_frame().await;
