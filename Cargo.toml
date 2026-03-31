@@ -1,5 +1,5 @@
 [package]
-name = "stacker_client"
+name = "stacker"
 version = "0.1.0"
 edition = "2024"
 
