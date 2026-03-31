@@ -91,8 +91,17 @@ impl Scene for Game {
 
             clear_background(WHITE);
 
-            let offset_x = (screen_width() - PILE_WIDTH as f32 * BLOCK_SIZE) / 2.;
-            let offset_y = (screen_height() - GRID_HEIGHT as f32 * BLOCK_SIZE) / 2.;
+            let offset_x = ((screen_width() - PILE_WIDTH as f32 * BLOCK_SIZE) / 2.).floor();
+            let offset_y = ((screen_height() - GRID_HEIGHT as f32 * BLOCK_SIZE) / 2.).floor();
+
+            draw_rectangle_lines(
+                offset_x,
+                offset_y,
+                PILE_WIDTH as f32 * BLOCK_SIZE,
+                GRID_HEIGHT as f32 * BLOCK_SIZE,
+                2.,
+                GRAY,
+            );
 
             for (y, row) in self.engine.pile().iter().enumerate() {
                 for (x, &block) in row.iter().enumerate() {
