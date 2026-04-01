@@ -1171,7 +1171,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
-name = "stacker_client"
+name = "stacker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1179,13 +1179,15 @@ dependencies = [
  "egui-macroquad",
  "macroquad",
  "serde_json",
- "stacker_engine",
+ "stacker-engine",
  "tokio",
 ]
 
 [[package]]
-name = "stacker_engine"
+name = "stacker-engine"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea6b03cf6f312531e5001283b66268b56dbaf4f222f488ffa8d074a220d1d559"
 dependencies = [
  "heapless",
  "rand",
