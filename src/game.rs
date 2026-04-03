@@ -15,7 +15,7 @@ const BLOCK_SIZE: f32 = 25.;
 pub struct Game {
     engine: Engine,
     prev_time: Instant,
-    residue: f64,
+    residue: u128,
     inputs: Vec<Input>,
 }
 
@@ -35,7 +35,7 @@ impl Default for Game {
                 },
             ),
             prev_time: Instant::now(),
-            residue: 0.0,
+            residue: 0,
             inputs: vec![],
         }
     }
@@ -66,13 +66,15 @@ impl Game {
     }
 }
 
+const NS_PER_FRAME: u128 = 1_000_000_000 / Engine::FPS as u128;
+
 #[async_trait]
 impl Scene for Game {
     async fn execute(&mut self) -> Box<dyn Scene> {
         loop {
             let time = Instant::now();
             let delta = time - self.prev_time;
-            self.residue += delta.as_secs_f64();
+            self.residue += delta.as_nanos();
 
             self.handle_input();
 
@@ -80,10 +82,10 @@ impl Scene for Game {
                 self.engine.queue_garbage(5);
             }
 
-            while self.residue >= 1.0 / 60.0 {
+            while self.residue >= NS_PER_FRAME {
                 self.engine.update(&self.inputs);
                 self.inputs.clear();
-                self.residue -= 1.0 / 60.0
+                self.residue -= NS_PER_FRAME;
             }
 
             clear_background(WHITE);
